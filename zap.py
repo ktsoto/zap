@@ -44,22 +44,6 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
     hdu.close()
 
 
-def _dev(cube, header, clean=True, zlevel=True, cfilter=100, pevals=[], 
-                nevals=[], optimize=False, silent=False):
-    """
-    Developer mode.  For inserting small cubes.
- 
-    """
-    
-    #create an instance 
-    zobj=zclass(cube, header)
-
-    zobj._run(clean=clean, zlevel=zlevel, cfilter=cfilter, 
-               pevals=pevals, nevals=nevals, optimize=optimize, silent=silent)
-    
-    return zobj
-
-
 def interactive(musecubefits, clean=True, zlevel=True, cfilter=100, pevals=[], 
                 nevals=[], optimize=False, silent=False):
     """
@@ -231,7 +215,7 @@ class zclass:
         self.varlist = np.array([]) #container for variance curves
 
 
-    def _run(self, clean=True, zlevel=True, cfilter=100, pevals=False, nevals=False, 
+    def _run(self, clean=True, zlevel=True, cfilter=100, pevals=[], nevals=[], 
             optimize=False, calctype='median', nsig=3., q=4, silent=False):
 	
         """
@@ -484,6 +468,10 @@ class zclass:
         provide an array that defines neval or peval per segment.
         
         """
+        if type(nevals) != list:
+            nevals = [nevals]
+        if type(pevals) != list:
+            pevals = [pevals]
         nranges = len(self.especeval)
         nevals = np.array(nevals)
         pevals = np.array(pevals)
@@ -498,14 +486,14 @@ class zclass:
             nevals=np.array([1])
         
         #deal with an input list
-        if len(nevals) >= 1:
+        if len(nevals) > 1:
             if len(nevals) != nranges:
                 nevals = np.array([nevals[0]])
                 print('Chosen eigenspectra array does not correspond to number of segments')
             else:
                 print('Choosing {0} eigenspectra for segments'.format(nevals))
         
-        if len(pevals) >= 1:
+        if len(pevals) > 1:
             if len(pevals) != nranges:
                 pevals = np.array([pevals[0]])
                 print('Chosen eigenspectra array does not correspond to number of segments')
@@ -546,8 +534,6 @@ class zclass:
     
         # take each ministack and run them independently
         pool = Pool(processes=nseg) # start pool
-
- 
     
         #do the multiprocessing on each ministack and return eigenvalues/eigenvectors
         reconpieces = pool.map(_ireconstruct, self.subespeceval)
@@ -575,7 +561,7 @@ class zclass:
             #self.cleancube[self.nanpos[0],self.nanpos[1],self.nanpos[2]]
     
     #redo the residual reconstruction with a different set of parameters
-    def reprocess(self, pevals=False, nevals=False):
+    def reprocess(self, pevals=[], nevals=[]):
         """
         A method that redoes the eigenvalue selection, reconstruction, and remolding of the 
         data.
