@@ -1,8 +1,8 @@
 #ZAP - Zurich Atmosphere Purge
 #Developed by Kurt Soto 
 import numpy as np
-#import pyfits
-from astropy.io import fits as pyfits
+import pyfits
+#from astropy.io import fits as pyfits
 from time import time
 from scipy import ndimage
 from multiprocessing import Pool
@@ -17,12 +17,15 @@ import os
 ##################################################################################################
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zlevel=True, 
-            cfilter=100, pevals=[], nevals=[], optimize=False, silent=False):
+            cfilter=100, pevals=[], nevals=[], optimize=True, silent=False):
     """
     Performs the entire ZAP sky subtraction algorithm on an input fits file and writes the 
     product to an output fits file. 
  
     """
+
+    outcubefits=outcubefits.split('.fits')[0]+'.fits' #make sure it has the right extension
+
     #check if outcubefits exists before beginning 
     if os.path.exists(outcubefits):
         print 'output filename "{0}" exists'.format(outcubefits) 
@@ -36,16 +39,11 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
                pevals=pevals, nevals=nevals, optimize=optimize, silent=silent)
 
     
-    hdu[1].data = zobj._cubetowrite()
-    hdu[1].header = _newheader(zobj)
-
-    hdu.writeto(outcubefits)
-
-    hdu.close()
+    zobj.mergefits(musecubefits, outcubefits)
 
 
 def interactive(musecubefits, clean=True, zlevel=True, cfilter=100, pevals=[], 
-                nevals=[], optimize=False, silent=False):
+                nevals=[], optimize=True, silent=False):
     """
     Performs the entire ZAP sky subtraction algorithm on an input datacube and header. A class 
     containing all of the necessary data to examine the result and modify as desired.
@@ -468,9 +466,9 @@ class zclass:
         provide an array that defines neval or peval per segment.
         
         """
-        if type(nevals) != list:
+        if type(nevals) != list and type(nevals) != type(np.array([0])): # this can be cleaner
             nevals = [nevals]
-        if type(pevals) != list:
+        if type(pevals) != list and type(pevals) != type(np.array([0])):
             pevals = [pevals]
         nranges = len(self.especeval)
         nevals = np.array(nevals)
@@ -628,7 +626,7 @@ class zclass:
             
             #look for crossing points. When they get within 3 sigma of scatter in settled region.
             cross1 = np.append(False, deriv >= mn1 - 2*std1) #pad by 1 for 1st deriv
-            cross2 = np.append([False,False], deriv2 <= mn2 + 2*std2) #pad by 2 for 2nd
+            cross2 = np.append([False,False], np.abs(deriv2) <= mn2 + 2*std2) #pad by 2 for 2nd
             
             cross = np.logical_or(cross1,cross2)
             
@@ -660,18 +658,22 @@ class zclass:
         outhdu.writeto(outcubefits)
 
 
-    def mergefits(self, musecubefits):
+    def mergefits(self, musecubefits, outcubefits):
         """
-        Merge the ZAP cube into the full muse datacube
+        Merge the ZAP cube into the full muse datacube and write
         """
-        if os.path.exists(musecubefits):
-            print 'output filename exists' 
+
+        outcubefits=outcubefits.split('.fits')[0]+'.fits' #make sure it has the right extension
+
+        if os.path.exists(outcubefits):
+            print 'output filename "{0}" exists'.format(outcubefits) 
             return
-            
+        
         hdu = pyfits.open(musecubefits)
-        hdu[1].header = _newheader(zclass)
+        hdu[1].header = _newheader(self)
         hdu[1].data = self._cubetowrite()
         
+        hdu.writeto(outcubefits)
 
 
 ##################################################################################################
@@ -768,30 +770,30 @@ def _ivarcurve(i, stack, pranges, especeval, variancearray,return_dict):
     ivarlist = np.array(ivarlist)
     return_dict[i] = ivarlist
 
-def _newheader(zclass):
+def _newheader(zobj):
 
-    header=zclass.header.copy()
+    header=zobj.header.copy()
 
     #put the pertinent zap parameters into the header
     header['COMMENT']='These data have been ZAPped!'
 
     # zlevel removal performed 
-    header.append(('ZAPzlvl',zclass.run_zlevel, 'ZAP zero level correction performed'), end=True)
+    header.append(('ZAPzlvl',zobj.run_zlevel, 'ZAP zero level correction performed'), end=True)
 
     # Nanclean performed
-    header['ZAPclean'] = (zclass.run_clean, 'ZAP NaN cleaning performed for calculation')
+    header['ZAPclean'] = (zobj.run_clean, 'ZAP NaN cleaning performed for calculation')
     
     # Continuum Filtering
-    header['ZAPcfilt'] = (zclass._cfilter, 'ZAP continuum filter size')
+    header['ZAPcfilt'] = (zobj._cfilter, 'ZAP continuum filter size')
 
     # number of segments
-    nseg=len(zclass.pranges)
+    nseg=len(zobj.pranges)
     header['ZAPnseg'] = (nseg, 'Number of segments used for ZAP SVD')
 
     # per segment variables
     for i in range(nseg):
-        header['ZAPpseg{0}'.format(i)] = ('{0}:{1}'.format(zclass._wlmin+zclass.pranges[i][0], zclass._wlmin+zclass.pranges[i][1]-1), 'spectrum segment (pixels)')
-        header['ZAPnev{0}'.format(i)] = (zclass.nevals[i], 'number of eigenvals/spectra used')
+        header['ZAPpseg{0}'.format(i)] = ('{0}:{1}'.format(zobj._wlmin+zobj.pranges[i][0], zobj._wlmin+zobj.pranges[i][1]-1), 'spectrum segment (pixels)')
+        header['ZAPnev{0}'.format(i)] = (zobj.nevals[i], 'number of eigenvals/spectra used')
     
     return header
 
@@ -824,7 +826,7 @@ def plotvarcurve(zobj, i=0):
     plt.plot([1,noptpix-1],[mn1-3*std1,mn1-3*std1])
 
     ax= fig.add_subplot(3,1,3)
-    plt.plot(np.arange(deriv.size)+2,deriv2)
+    plt.plot(np.arange(deriv2.size)+2,np.abs(deriv2))
     plt.plot([2,noptpix-2],[mn2,mn2])
     plt.plot([2,noptpix-2],[mn2-3*std2,mn2-3*std2])
     plt.plot([2,noptpix-2],[mn2+3*std2,mn2+3*std2])
