@@ -1,8 +1,6 @@
 #ZAP - Zurich Atmosphere Purge
 #Developed by Kurt Soto 
 import numpy as np
-import pyfits
-#from astropy.io import fits as pyfits
 from time import time
 from scipy import ndimage
 from multiprocessing import Pool
@@ -10,6 +8,10 @@ import multiprocessing
 import functools
 import matplotlib.pyplot as plt
 import os
+try:
+    from astropy.io import fits as pyfits
+except:
+    import pyfits
 
 
 ##################################################################################################
