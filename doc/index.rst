@@ -18,6 +18,7 @@ Examples
 In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a
 final fits datacube.::
 
+  import zap
   zap.process('INPUT.fits', 'OUTPUT.fits')
 
 
@@ -45,12 +46,12 @@ zlevel    True     Subtracts a systematic offset level from the data by calculat
 cfilter   100      Size of the filterbox used to remove the continuum features in order to
                    sterilize the basis set used to calculate the eigenbasis.
 
-nevals    False    Number of eigenspectra/eigenvaules used per spectral segment. If this
+nevals    []       Number of eigenspectra/eigenvaules used per spectral segment. If this
                    is used, the pevals is ignored. Provide either a single value that will be 
 		   used for all of the segments, or a list of 9 values that will be used for 
 		   each of the segments.
 
-pevals    False    Percentage of the caclulated eigenspectra/eigenvaules used per spectral
+pevals    []       Percentage of the caclulated eigenspectra/eigenvaules used per spectral
                    segment. Provide either a single value that will be used for all of the 
 		   segments, or a list of 9 values that will be used for each of the segments.
 
@@ -64,41 +65,54 @@ After running ZAP interactively, the user can elect to investigate the data prod
   import zap
   from matplotlib import pyplot as plt
   
-  zclass = zap.interactive('INPUT.fits', pevals=1) #choose 1% of modes per segment
+  zobj = zap.interactive('INPUT.fits', pevals=1) #choose 1% of modes per segment
   
   #investigate the dataproduct with pyplot
   plt.figure()
   
   #plot a spectrum extracted from the original cube
-  plt.plot(zclass.cube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'b', alpha=0.3)
+  plt.plot(zobj.cube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'b', alpha=0.3)
   
   #plot a spectrum of the cleaned ZAP dataproduct
-  plt.plot(zclass.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'g')
+  plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'g')
   
+  #choose just the major mode
+  zobj.reprocess(nevals=1) 
+
+  #plot a spectrum extracted from the original cube
+  plt.plot(zobj.cube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'b', alpha=0.3)
+  
+  #plot a spectrum of the cleaned ZAP dataproduct
+  plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'g')
+
   #choose some number of modes by hand
-  zclass.reprocess(nevals=[2,5,2,4,6,7,9,8,5])
+  zobj.reprocess(nevals=[2,5,2,4,6,7,9,8,5]) 
 
   #plot a spectrum
-  plt.plot(zclass.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'k')
+  plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'k')
 
-  #Use the optimization algorithm to identify the number of modes per segment
-  zclass.optimize()
+  #Use the optimization algorithm to identify the best number of modes per segment
+  zobj.optimize()
 
   #compare to the previous versions
-  plt.plot(zclass.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'r')  
+  plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'r')  
 
-  #identify a pixel in the dispersion axis that shows a strong residual feature in the original
+  #identify a pixel in the dispersion axis that shows a residual feature in the original
   plt.figure()
-  plt.matshow(zclass.cube[,:,:])
+  plt.matshow(zobj.cube[2903,:,:])
 
+  #compare this to the zap dataproduct
   plt.figure()
-  plt.matshow(zclass.cleancube[,:,:])
+  plt.matshow(zobj.cleancube[2903,:,:])
 
   #write the processed cube
-  zclass.writecube('DATACUBE_ZAP.fits')
+  zobj.writecube('DATACUBE_ZAP.fits')
 
   #or merge the zap datacube into to whole inout datacube, replacing the data extension
-  zclass.writecube('INPUT.fits','DATACUBE_FINAL_ZAP.fits')
+  zobj.writecube('INPUT.fits','DATACUBE_FINAL_ZAP.fits')
+
+.. warning::
+   The methods in ZAP heavily use python's multiprocessing module. The multiprocessing module is unstable when stopping in the middle of the processing, so it is highly reccommended that ZAP is allowed to run once started. On one of the machines dedicated to MUSE data reduction, the entire code with optimiztion takes approximately 20 minutes to finish. 
 
 
 ZCLASS
@@ -127,14 +141,13 @@ The user has the option to exlude this step (run_clean = False), but should be a
 
 Zero Level Subtraction
 ++++++++++++++++++++++
-Remove the continuum from each spaxel via filtering.
+Remove systematic offset in each spectral channel.
 
 Set by keyword "zlevel = True"
 
 This processing step is performed to remove residual sky features that are consistent over the entire field. The "zero level" is determined from the median per spectral channel, producing a spectrum of the residual. This spectrum can be accessed in the interactive mode from the produced instance of the zclass (Described below)
 
-.. warning::
-   The user should be cautious in cases where a spectral feature, such as an emission line, covers the entire field. In these cases, the median calculation will erroneously remove this feature.  Several approaches are in development for handling this case.
+The user should be cautious in cases where a spectral feature, such as an emission line, covers the entire field. In these cases, the median calculation will erroneously remove this feature.  Several approaches are in development for handling this case.
 
 Continuum Filtering
 +++++++++++++++++++
@@ -163,4 +176,3 @@ Using the previous steps, we have produced a set of spectra that are prepared fo
 
 Optimization
 ++++++++++++
-

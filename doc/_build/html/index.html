@@ -56,7 +56,8 @@ The tool employs multiprocessing to operate quickly and robustly on a large MUSE
 <h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
 <p>In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a
 final fits datacube.:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">zap</span>
+<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>This function will modify the data and header in the first extension of the fits file</p>
@@ -97,14 +98,14 @@ median per spectral channel.</td>
 sterilize the basis set used to calculate the eigenbasis.</td>
 </tr>
 <tr class="row-odd"><td>nevals</td>
-<td>False</td>
+<td>[]</td>
 <td>Number of eigenspectra/eigenvaules used per spectral segment. If this
 is used, the pevals is ignored. Provide either a single value that will be
 used for all of the segments, or a list of 9 values that will be used for
 each of the segments.</td>
 </tr>
 <tr class="row-even"><td>pevals</td>
-<td>False</td>
+<td>[]</td>
 <td>Percentage of the caclulated eigenspectra/eigenvaules used per spectral
 segment. Provide either a single value that will be used for all of the
 segments, or a list of 9 values that will be used for each of the segments.</td>
@@ -117,44 +118,59 @@ number of eigenspectra/eigenvalues to use per segment.</td>
 </tbody>
 </table>
 <p>After running ZAP interactively, the user can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows:</p>
-<div class="highlight-python"><pre>import zap
-from matplotlib import pyplot as plt
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">zap</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
 
-zclass = zap.interactive('INPUT.fits', pevals=1) #choose 1% of modes per segment
+<span class="n">zobj</span> <span class="o">=</span> <span class="n">zap</span><span class="o">.</span><span class="n">interactive</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">pevals</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#choose 1% of modes per segment</span>
 
-#investigate the dataproduct with pyplot
-plt.figure()
+<span class="c">#investigate the dataproduct with pyplot</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
 
-#plot a spectrum extracted from the original cube
-plt.plot(zclass.cube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'b', alpha=0.3)
+<span class="c">#plot a spectrum extracted from the original cube</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
 
-#plot a spectrum of the cleaned ZAP dataproduct
-plt.plot(zclass.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'g')
+<span class="c">#plot a spectrum of the cleaned ZAP dataproduct</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="s">&#39;g&#39;</span><span class="p">)</span>
 
-#choose some number of modes by hand
-zclass.reprocess(nevals=[2,5,2,4,6,7,9,8,5])
+<span class="c">#choose just the major mode</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">reprocess</span><span class="p">(</span><span class="n">nevals</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-#plot a spectrum
-plt.plot(zclass.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'k')
+<span class="c">#plot a spectrum extracted from the original cube</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
 
-#Use the optimization algorithm to identify the number of modes per segment
-zclass.optimize()
+<span class="c">#plot a spectrum of the cleaned ZAP dataproduct</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="s">&#39;g&#39;</span><span class="p">)</span>
 
-#compare to the previous versions
-plt.plot(zclass.cleancube[:,50:100,50:100].sum(axis=-1).sum(axis=-1), 'r')
+<span class="c">#choose some number of modes by hand</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">reprocess</span><span class="p">(</span><span class="n">nevals</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
 
-#identify a pixel in the dispersion axis that shows a strong residual feature in the original
-plt.figure()
-plt.matshow(zclass.cube[,:,:])
+<span class="c">#plot a spectrum</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="s">&#39;k&#39;</span><span class="p">)</span>
 
-plt.figure()
-plt.matshow(zclass.cleancube[,:,:])
+<span class="c">#Use the optimization algorithm to identify the best number of modes per segment</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
 
-#write the processed cube
-zclass.writecube('DATACUBE_ZAP.fits')
+<span class="c">#compare to the previous versions</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="s">&#39;r&#39;</span><span class="p">)</span>
 
-#or merge the zap datacube into to whole inout datacube, replacing the data extension
-zclass.writecube('INPUT.fits','DATACUBE_FINAL_ZAP.fits')</pre>
+<span class="c">#identify a pixel in the dispersion axis that shows a residual feature in the original</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">matshow</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cube</span><span class="p">[</span><span class="mi">2903</span><span class="p">,:,:])</span>
+
+<span class="c">#compare this to the zap dataproduct</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">matshow</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[</span><span class="mi">2903</span><span class="p">,:,:])</span>
+
+<span class="c">#write the processed cube</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">writecube</span><span class="p">(</span><span class="s">&#39;DATACUBE_ZAP.fits&#39;</span><span class="p">)</span>
+
+<span class="c">#or merge the zap datacube into to whole inout datacube, replacing the data extension</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">writecube</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span><span class="s">&#39;DATACUBE_FINAL_ZAP.fits&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The methods in ZAP heavily use python&#8217;s multiprocessing module. The multiprocessing module is unstable when stopping in the middle of the processing, so it is highly reccommended that ZAP is allowed to run once started. On one of the machines dedicated to MUSE data reduction, the entire code with optimiztion takes approximately 20 minutes to finish.</p>
 </div>
 </div>
 <div class="section" id="zclass">
@@ -206,7 +222,7 @@ zclass.writecube('INPUT.fits','DATACUBE_FINAL_ZAP.fits')</pre>
 </div></blockquote>
 <dl class="method">
 <dt id="zap.zclass.chooseevals">
-<tt class="descname">chooseevals</tt><big>(</big><em>nevals=False</em>, <em>pevals=False</em><big>)</big><a class="headerlink" href="#zap.zclass.chooseevals" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">chooseevals</tt><big>(</big><em>nevals=</em><span class="optional">[</span><span class="optional">]</span>, <em>pevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.chooseevals" title="Permalink to this definition">¶</a></dt>
 <dd><p>Choose the number of eigenspectra/evals to use for reconstruction</p>
 <p>user supplies the number of eigen spectra to be used (neval) or the percentage
 of the eigenspectra that were calculated (peval) from each spectral segment to be used.</p>
@@ -215,15 +231,9 @@ provide an array that defines neval or peval per segment.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="zap.zclass.make_contcube">
-<tt class="descname">make_contcube</tt><big>(</big><big>)</big><a class="headerlink" href="#zap.zclass.make_contcube" title="Permalink to this definition">¶</a></dt>
-<dd><p>Takes the continuum stack and returns it into a familiar cube form.</p>
-</dd></dl>
-
-<dl class="method">
 <dt id="zap.zclass.mergefits">
-<tt class="descname">mergefits</tt><big>(</big><em>musecubefits</em><big>)</big><a class="headerlink" href="#zap.zclass.mergefits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Merge the ZAP cube into the full muse datacube</p>
+<tt class="descname">mergefits</tt><big>(</big><em>musecubefits</em>, <em>outcubefits</em><big>)</big><a class="headerlink" href="#zap.zclass.mergefits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merge the ZAP cube into the full muse datacube and write</p>
 </dd></dl>
 
 <dl class="method">
@@ -253,7 +263,7 @@ datacube.</p>
 
 <dl class="method">
 <dt id="zap.zclass.reprocess">
-<tt class="descname">reprocess</tt><big>(</big><em>pevals=False</em>, <em>nevals=False</em><big>)</big><a class="headerlink" href="#zap.zclass.reprocess" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">reprocess</tt><big>(</big><em>pevals=</em><span class="optional">[</span><span class="optional">]</span>, <em>nevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.reprocess" title="Permalink to this definition">¶</a></dt>
 <dd><p>A method that redoes the eigenvalue selection, reconstruction, and remolding of the 
 data.</p>
 </dd></dl>
@@ -280,13 +290,10 @@ data.</p>
 </div>
 <div class="section" id="zero-level-subtraction">
 <h2>Zero Level Subtraction<a class="headerlink" href="#zero-level-subtraction" title="Permalink to this headline">¶</a></h2>
-<p>Remove the continuum from each spaxel via filtering.</p>
+<p>Remove systematic offset in each spectral channel.</p>
 <p>Set by keyword &#8220;zlevel = True&#8221;</p>
 <p>This processing step is performed to remove residual sky features that are consistent over the entire field. The &#8220;zero level&#8221; is determined from the median per spectral channel, producing a spectrum of the residual. This spectrum can be accessed in the interactive mode from the produced instance of the zclass (Described below)</p>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">The user should be cautious in cases where a spectral feature, such as an emission line, covers the entire field. In these cases, the median calculation will erroneously remove this feature.  Several approaches are in development for handling this case.</p>
-</div>
+<p>The user should be cautious in cases where a spectral feature, such as an emission line, covers the entire field. In these cases, the median calculation will erroneously remove this feature.  Several approaches are in development for handling this case.</p>
 </div>
 <div class="section" id="continuum-filtering">
 <h2>Continuum Filtering<a class="headerlink" href="#continuum-filtering" title="Permalink to this headline">¶</a></h2>
