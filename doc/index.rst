@@ -26,7 +26,7 @@ This function will modify the data and header in the first extension of the fits
 
 However, ZAP can also  be used interactively from within ipython using pyfits. ::
 
-  import zap
+  from mpdaf_user import zap
   zclass = zap.interactive('INPUT.fits')
 
 The run method operates on the datacube, and retains all of the data and methods necessary to
