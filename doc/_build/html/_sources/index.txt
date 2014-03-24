@@ -62,7 +62,7 @@ optimize  True     A flag used to call the optimization method. This automatical
 
 After running ZAP interactively, the user can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows: ::
 
-  import zap
+  from mpdaf_user import zap
   from matplotlib import pyplot as plt
   
   zobj = zap.interactive('INPUT.fits', pevals=1) #choose 1% of modes per segment
