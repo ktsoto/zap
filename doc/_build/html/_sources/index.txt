@@ -9,58 +9,109 @@ Welcome to ZAP's documentation!
 .. toctree::
    :maxdepth: 2
 
-ZAP (the Zurich Atmosphere Purge) is a sky subtraction tool which removes residual sky emission line features.
-The tool employs multiprocessing to operate quickly and robustly on a large MUSE datacube.
+ZAP (the Zurich Atmosphere Purge) is a high precision sky subtraction tool which can be used as complete sky subtraction solution, or as an enhancement to previously sky-subtracted data.  The method uses PCA to isolate the residual features and remove them from the observed datacube.
 
 Examples
 ========
 
-In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a
-final fits datacube.::
+In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a final fits datacube.::
 
-  import zap
+  from mpdaf_user import zap
   zap.process('INPUT.fits', 'OUTPUT.fits')
 
+Care should be taken, however, since this case assumes a sparse field. 
 
-This function will modify the data and header in the first extension of the fits file
+There are a number of options that can be passed to the code which we tabulate here, and will describe in several diffferent use cases. While every option is available in each type of processing, I outine several example cases below.
 
-However, ZAP can also  be used interactively from within ipython using pyfits. ::
+It is important to note that many of these optioons come into play when building a basis set that will go into doing sky subtraction calculation.
 
-  import zap
+========  ========  ==============================================================================
+Keyword   Default   Function
+========  ========  ==============================================================================
+clean     True      Interpolates over NaN values in the datacube to allow processing on all 
+                    spectra for the input SVD. The NaN values are replaced in the final datacube.
+
+zlevel    'median'  This option is used to define the method for determining the zeroth order 
+                    subtraction of the sky. This is used to remove any systematic sky feature 
+		    that exists over the whole field. Options are 'median', 'sigclip', and 'none'.
+
+q         0         Quartile selection, this option will remove the top n quartiles of the 
+                    dataset to calculate of the zlsky. This option works well set to 1 with the 
+		    'sigclip' option.
+
+cfilter   100       Size of the filterbox used to remove the continuum features in order to
+                    sterilize the basis set used to calculate the eigenbasis.
+
+nevals    []        Number of eigenspectra/eigenvaules used per spectral segment. If this
+                    is used, the pevals is ignored. Provide either a single value that will be 
+		    used for all of the segments, or a list of 9 values that will be used for 
+		    each of the segments.
+
+pevals    []        Percentage of the caclulated eigenspectra/eigenvaules used per spectral
+                    segment. Provide either a single value that will be used for all of the 
+		    segments, or a list of 9 values that will be used for each of the segments.
+
+optimize  True      A flag used to call the optimization method. This automatically determines the
+                    number of eigenspectra/eigenvalues to use per segment. 
+
+extSVD    ''        An optional parameter that allows the input of a externally calculated 
+                    eigenbasis as well as a zlevel
+
+mask      ''        (only used with the SVDoutput method) A 2D fits image to exclude regions that
+                    may contaminate the zlevel or eigenspectra.
+
+========  ========  ==============================================================================
+
+
+
+Sparse Field Case
+=================
+
+As noted above, this case can be handled simply with the observed datacube itself, using: ::
+
+  zap.process('INPUT.fits', 'OUTPUT.fits')
+
+It is possible to change the zlevel calculation with: ::
+
+  zap.process('INPUT.fits', 'OUTPUT.fits', zlevel='sigclip')
+
+
+Partially Filled Case
+=====================
+
+There are two approaches to this case, both of which use an algorithm to limit the effect of the large object on the determination of the sky determination. The first approach is similar to the sparse case, except to include quartile rejection. ::
+
+  zap.process('INPUT.fits', 'OUTPUT.fits', q=1, zlevel='sigclip')
+
+This option removes the top quatile per spectral channel of the data before determining the contribution to the zlevel. This option used along with the sigma clipping can identify the background sky level, without including signal from the objects. This is the best option for a field that has many objects with varying 
+
+
+Pre-determined zlevel and eigenspectra
+======================================
+
+Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. ::
+  
+  zap.SVDoutput('INPUT.fits', svdfn='ZAP_SVD.fits', zlevel='sigclip') # create SVD file
+  zap.process('INPUT.fits', 'OUTPUT.fits', extSVD='ZAP_SVD.fits')
+
+This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. The values in the mask image will be 0 in the masked regions (such a where an extended object is) and 1 in the unmasked regions. Set this parameter with mask='maskfilename.fits'
+
+This approach also can address the saturated field case, in this case the input is an offset sky observation. ::
+
+  zap.SVDoutput('Offset_Field_CUBE.fits', svdfn='Offset_ZAP_SVD.fits', zlevel='sigclip')
+  zap.process('INPUT.fits', 'OUTPUT.fits', extSVD='ZAP_SVD.fits')
+
+
+Interactive mode
+================
+
+ZAP can also  be used interactively from within ipython using pyfits. ::
+
+  from mpdaf_user import zap
   zclass = zap.interactive('INPUT.fits')
 
 The run method operates on the datacube, and retains all of the data and methods necessary to
-process a final data cube in a python class named zclass.
-
-In both cases, the options are passed via the ipython command line via keywords:
-
-========  =======  ==============================================================================
-Keyword   Default  Function
-========  =======  ==============================================================================
-clean     True     Removes NaN values from the datacube to allow processing on allspectra.
-                   The NaN values are replaced in the final datacube.
-
-zlevel    True     Subtracts a systematic offset level from the data by calculating a
-                   median per spectral channel.
-
-cfilter   100      Size of the filterbox used to remove the continuum features in order to
-                   sterilize the basis set used to calculate the eigenbasis.
-
-nevals    []       Number of eigenspectra/eigenvaules used per spectral segment. If this
-                   is used, the pevals is ignored. Provide either a single value that will be 
-		   used for all of the segments, or a list of 9 values that will be used for 
-		   each of the segments.
-
-pevals    []       Percentage of the caclulated eigenspectra/eigenvaules used per spectral
-                   segment. Provide either a single value that will be used for all of the 
-		   segments, or a list of 9 values that will be used for each of the segments.
-
-optimize  True     A flag used to call the optimization method. This automatically determines the
-                   number of eigenspectra/eigenvalues to use per segment. 
-
-========  =======  ==============================================================================
-
-After running ZAP interactively, the user can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows: ::
+process a final data cube in a python class named zclass. You can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows: ::
 
   from mpdaf_user import zap
   from matplotlib import pyplot as plt
@@ -109,10 +160,7 @@ After running ZAP interactively, the user can elect to investigate the data prod
   zobj.writecube('DATACUBE_ZAP.fits')
 
   #or merge the zap datacube into to whole inout datacube, replacing the data extension
-  zobj.writecube('INPUT.fits','DATACUBE_FINAL_ZAP.fits')
-
-.. warning::
-   The methods in ZAP heavily use python's multiprocessing module. The multiprocessing module is unstable when stopping in the middle of the processing, so it is highly reccommended that ZAP is allowed to run once started. On one of the machines dedicated to MUSE data reduction, the entire code with optimiztion takes approximately 20 minutes to finish. 
+  zobj.writefits(outcubefits='DATACUBE_FINAL_ZAP.fits')
 
 
 ZCLASS
