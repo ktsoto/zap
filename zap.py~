@@ -365,7 +365,6 @@ class zclass:
 
         t0=time()
 
-        print 'Preparing Data for eigenspectra calculation'
         # clean up the nan values
         if clean != False:
             self._nanclean()
@@ -717,7 +716,7 @@ class zclass:
         Subtracts the reconstructed residuals and places the cleaned spectra into the duplicated
         datacube.
         """
-        print 'Applying correction and reshaping data product'
+        print 'Reshaping data product'
         self.cleancube = self.cube.copy()
         self.cleancube[:,self.y,self.x] = self.stack-self.recon
         if self.run_clean == True:
