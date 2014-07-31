@@ -17,7 +17,7 @@
 
 import numpy as np
 from time import time
-from scipy import ndimage
+from scipy import ndimage as ndi
 from multiprocessing import Pool
 import multiprocessing
 import matplotlib.pyplot as plt
@@ -33,7 +33,7 @@ except:
 ##################################################################################################
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zlevel='median',
-            q=0, cftype='weight', cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False, 
+            q=0, cftype='median', cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False, 
             extSVD=''):
     """
     Performs the entire ZAP sky subtraction algorithm on an input fits file and writes the
@@ -312,7 +312,7 @@ class zclass:
         self.normstack = np.array([])
         
         #List of segmentation limits in the optical
-        skyseg=np.array([0, 5400, 5850, 6400, 6700, 7150, 7700, 8200, 8700, 10000])
+        skyseg=np.array([0, 5400, 5850, 6440, 6750, 7200, 7700, 8265, 8602, 8731, 9275, 10000])
         
         #identify the spectral range of the dataset
         laxmin = min(laxis)
@@ -782,23 +782,21 @@ class zclass:
             #optimize
             deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1]
             deriv2 = (np.roll(deriv,-1)-deriv)[:-1]
+            smderiv = ndi.uniform_filter(deriv,3)
+            smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
 
             noptpix=self.varlist[i].size
 
             #statistics on the derivatives
-            mn1=deriv[.75 * (noptpix-2):].mean()
-            std1=deriv[.75 * (noptpix-2):].std()
-            mn2=deriv2[.75 * (noptpix-2):].mean()
-            std2=deriv2[.75 * (noptpix-2):].std()
-            ind = np.arange(self.varlist[i].size) #for matching logicals to indices
+            mn1=deriv[.5 * (noptpix-2):].mean()
+            std1=deriv[.5 * (noptpix-2):].std()*2
+            mn2=deriv2[.5 * (noptpix-2):].mean()
+            std2=deriv2[.5 * (noptpix-2):].std()*2
 
             #look for crossing points. When they get within 1 sigma of mean in settled region.
-            cross1 = np.append([False], deriv >= (mn1 - std1)) #pad by 1 for 1st deriv
-            cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2)) #pad by 2 for 2nd
-            
-            cross = np.logical_or(cross1,cross2)
-            
-            self.nevals[i] = min(ind[cross])+1
+            cross = np.append([False, False], np.abs(smderiv2) <= (mn2 + std2)) #pad by 2 for 2nd
+
+            self.nevals[i] = np.where(cross)[0][0]
 
         self.chooseevals(nevals=self.nevals)
         self.reconstruct()
@@ -912,39 +910,40 @@ class zclass:
         if len(self.varlist) == 0:
             print 'No varlist found. The optimize method must be run first. \n'
             return
-    
-        varcurve=self.varlist[i]
-    
-        deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1] #calculate "derivative"
+        
+        #optimize
+        deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1]
         deriv2 = (np.roll(deriv,-1)-deriv)[:-1]
-    
+        smderiv = ndi.uniform_filter(deriv,3)
+        smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
+        
         noptpix=self.varlist[i].size
-    
+        
         #statistics on the derivatives
-        mn1=deriv[.75 * (noptpix-2):].mean()
-        std1=deriv[.75 * (noptpix-2):].std()
-        mn2=deriv2[.75 * (noptpix-2):].mean()
-        std2=deriv2[.75 * (noptpix-2):].std()
-    
+        mn1=deriv[.5 * (noptpix-2):].mean()
+        std1=deriv[.5 * (noptpix-2):].std()*2
+        mn2=deriv2[.5 * (noptpix-2):].mean()
+        std2=deriv2[.5 * (noptpix-2):].std()*2
+
         fig=plt.figure(figsize=[10,15])
         ax= fig.add_subplot(3,1,1)
-        plt.plot(varcurve,linewidth=3)
-        plt.plot([self.nevals[i],self.nevals[i]],[min(varcurve),max(varcurve)])
-    
+        plt.plot(self.varlist[i],linewidth=3)
+        plt.plot([self.nevals[i],self.nevals[i]],[min(self.varlist[i]),max(self.varlist[i])])
+        
         ax= fig.add_subplot(3,1,2)
-        plt.plot(np.arange(deriv.size)+1,deriv)
-        plt.plot([1,noptpix-1],[mn1,mn1])
-        plt.plot([1,noptpix-1],[mn1-2*std1,mn1-2*std1])
-        plt.plot([self.nevals[i]+1,self.nevals[i]+1],[min(deriv),max(deriv)])
-    
-        ax= fig.add_subplot(3,1,3)
-        plt.plot(np.arange(deriv2.size)+2,np.abs(deriv2))
-        plt.plot([2,noptpix-2],[mn2,mn2])
-        plt.plot([2,noptpix-2],[mn2-2*std2,mn2-2*std2])
-        plt.plot([2,noptpix-2],[mn2+2*std2,mn2+2*std2])
-        plt.plot([self.nevals[i]+2,self.nevals[i]+2],[min(deriv2),max(deriv2)])
-        plt.suptitle(i)
+        plt.plot(np.arange(deriv.size),deriv)
+        plt.plot(np.arange(deriv.size),smderiv, 'r')
+        plt.plot([0,len(deriv)],[mn1,mn1],'k')
+        plt.plot([0,len(deriv)],[mn1-std1,mn1-std1],'0.5')
+        plt.plot([self.nevals[i]-1,self.nevals[i]-1],[min(deriv),max(deriv)])
 
+        ax= fig.add_subplot(3,1,3)
+        plt.plot(np.arange(deriv2.size),np.abs(deriv2))
+        plt.plot(np.arange(deriv2.size),np.abs(smderiv2), 'r')
+        plt.plot([0,len(deriv2)],[mn2,mn2],'k')
+        plt.plot([0,len(deriv2)],[mn2+std2,mn2+std2],'0.5')
+        plt.plot([self.nevals[i]-2,self.nevals[i]-2],[min(deriv2),max(deriv2)])
+        plt.suptitle(i)
 
 
 ##################################################################################################
@@ -1060,8 +1059,8 @@ def _icfmedian(i, stack, cfwidth, sprange, return_dict):  #for distributing data
     Helper function to distribute data to Pool for SVD
     """
     ufilt=3 #set this to help with extreme over/under corrections
-    result = ndimage.median_filter(
-        ndimage.uniform_filter(stack[:,sprange[0]:sprange[1]], (ufilt,1)), (cfwidth,1))
+    result = ndi.median_filter(
+        ndi.uniform_filter(stack[:,sprange[0]:sprange[1]], (ufilt,1)), (cfwidth,1))
     return_dict[i]=result
 
 def _cfmedian(stack, cfwidth=300, silent=False):
@@ -1184,7 +1183,7 @@ def _ivarcurve(i, stack, pranges, especeval, variancearray,contarray, return_dic
     iespeceval = especeval[i]
     ivariancearray = variancearray[i]
     ivarlist = []
-    totalnevals = int(np.round((iespeceval[1].shape[0])*0.20))
+    totalnevals = int(np.round((iespeceval[1].shape[0])*0.25))
 
     for nevals in range(totalnevals):
         if nevals % (totalnevals * .1) <= 1:
@@ -1222,9 +1221,9 @@ def _newheader(zobj):
 
     # per segment variables
     for i in range(nseg):
-        header['ZAPpseg{0}'.format(i)] = ('{0}:{1}'.format(zobj._wlmin+zobj.pranges[i][0],
-                                                           zobj._wlmin+zobj.pranges[i][1]-1),
-                                          'spectrum segment (pixels)')
+        header['ZAPseg{0}'.format(i)] = ('{0}:{1}'.format(zobj._wlmin+zobj.pranges[i][0],
+                                                          zobj._wlmin+zobj.pranges[i][1]-1),
+                                         'spectrum segment (pixels)')
 
         header['ZAPnev{0}'.format(i)] = (zobj.nevals[i], 'number of eigenvals/spectra used')
 
@@ -1310,3 +1309,4 @@ def _nanclean(cube, rejectratio=0.25, boxsz=1, silent=False):
         print 'Time to clean NaNs: {0} s'.format(int(t))
 
     return cleancube, badcube
+

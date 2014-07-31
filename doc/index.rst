@@ -76,15 +76,17 @@ mask      ''        (only used with the SVDoutput method) A 2D fits image to exc
 
 The code can handle datacubes trimmed in wavelength space. Since the code uses the correlation of segments of the emission line spectrum, it is best to trim the cube at specific wavelengths. The cube can include any connected subset of these segments. (for example 6400 - 8200 Angstroms) ::
 
-  [4600, 5400]
+  [4500, 5400]
   [5400, 5850]
-  [5850, 6400]
-  [6400, 6700]
-  [6700, 7150]
-  [7150, 7700]
-  [7700, 8200]
-  [8200, 8700]
-  [8700, 9900]
+  [5850, 6440]
+  [6440, 6750]
+  [6750, 7200]
+  [7200, 7700]
+  [7700, 8265]
+  [8265, 8602]
+  [8602, 8731]
+  [8731, 9275]
+  [9275, 9500]
 
 
 Sparse Field Case

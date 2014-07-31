@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -15,7 +13,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
+        URL_ROOT:    './',
         VERSION:     '0.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -86,7 +84,9 @@ the NaNs remain in the final datacube.</td>
 <td>&#8216;median&#8217;</td>
 <td>This option is used to define the method for determining the zeroth order
 subtraction of the sky. This is used to remove any systematic sky feature
-that exists over the whole field. Options are &#8216;median&#8217;, &#8216;sigclip&#8217;, and &#8216;none&#8217;.</td>
+that exists over the whole field. Options are &#8216;median&#8217;, &#8216;sigclip&#8217;, and &#8216;none&#8217;.
+The &#8216;none&#8217; option should only be applied when ZAP is applied to enhance a
+previous sky subtraction.</td>
 </tr>
 <tr class="row-even"><td>q</td>
 <td>0</td>
@@ -94,51 +94,62 @@ that exists over the whole field. Options are &#8216;median&#8217;, &#8216;sigcl
 dataset to calculate of the zlsky. This option works well set to 1 with the
 &#8216;sigclip&#8217; option.</td>
 </tr>
-<tr class="row-odd"><td>cfilter</td>
-<td>100</td>
+<tr class="row-odd"><td>cftype</td>
+<td>&#8216;median&#8217;</td>
+<td>The type of filtering that is applied to remove the continuum.  &#8216;weight&#8217;
+refers to the weighted median, which uses the calculated zlevel sky as the
+weight. &#8216;median&#8217; refers to a rolling median filter with a nested small
+uniform filter. The &#8216;weight&#8217; option provides a better result, but is much
+slower (an additional 10 minutes on a single exposure) and should only be
+run in the complete sky subtraction case.</td>
+</tr>
+<tr class="row-even"><td>cfwidth</td>
+<td>300</td>
 <td>Size of the filterbox used to remove the continuum features in order to
 sterilize the basis set used to calculate the eigenbasis.</td>
 </tr>
-<tr class="row-even"><td>optimize</td>
+<tr class="row-odd"><td>optimize</td>
 <td>True</td>
 <td>A flag used to call the optimization method. This automatically determines the
 number of eigenspectra/eigenvalues to use per segment.</td>
 </tr>
-<tr class="row-odd"><td>nevals</td>
+<tr class="row-even"><td>nevals</td>
 <td>[]</td>
 <td>Number of eigenspectra/eigenvaules used per spectral segment. If this
 is used, the pevals is ignored. Provide either a single value that will be
 used for all of the segments, or a list of 9 values that will be used for
 each of the segments.</td>
 </tr>
-<tr class="row-even"><td>pevals</td>
+<tr class="row-odd"><td>pevals</td>
 <td>[]</td>
 <td>Percentage of the caclulated eigenspectra/eigenvaules used per spectral
 segment. Provide either a single value that will be used for all of the
 segments, or a list of 9 values that will be used for each of the segments.</td>
 </tr>
-<tr class="row-odd"><td>extSVD</td>
+<tr class="row-even"><td>extSVD</td>
 <td>&#8216;&#8217;</td>
 <td>An optional parameter that allows the input of a externally calculated
 eigenbasis as well as a zlevel</td>
 </tr>
-<tr class="row-even"><td>mask</td>
+<tr class="row-odd"><td>mask</td>
 <td>&#8216;&#8217;</td>
 <td>(only used with the SVDoutput method) A 2D fits image to exclude regions that
 may contaminate the zlevel or eigenspectra.</td>
 </tr>
 </tbody>
 </table>
-<p>The code can handle datacubes trimmed in wavelength space. Since the code uses the correlation of segments of the emission line spectrum, it is best to trim the cube at specific wavelengths. The cube can include any connected subset of these segments, i.e. 6400 - 8200 Angstroms.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="mi">4600</span><span class="p">,</span> <span class="mi">5400</span><span class="p">]</span>
+<p>The code can handle datacubes trimmed in wavelength space. Since the code uses the correlation of segments of the emission line spectrum, it is best to trim the cube at specific wavelengths. The cube can include any connected subset of these segments. (for example 6400 - 8200 Angstroms)</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="mi">4500</span><span class="p">,</span> <span class="mi">5400</span><span class="p">]</span>
 <span class="p">[</span><span class="mi">5400</span><span class="p">,</span> <span class="mi">5850</span><span class="p">]</span>
-<span class="p">[</span><span class="mi">5850</span><span class="p">,</span> <span class="mi">6400</span><span class="p">]</span>
-<span class="p">[</span><span class="mi">6400</span><span class="p">,</span> <span class="mi">6700</span><span class="p">]</span>
-<span class="p">[</span><span class="mi">6700</span><span class="p">,</span> <span class="mi">7150</span><span class="p">]</span>
-<span class="p">[</span><span class="mi">7150</span><span class="p">,</span> <span class="mi">7700</span><span class="p">]</span>
-<span class="p">[</span><span class="mi">7700</span><span class="p">,</span> <span class="mi">8200</span><span class="p">]</span>
-<span class="p">[</span><span class="mi">8200</span><span class="p">,</span> <span class="mi">8700</span><span class="p">]</span>
-<span class="p">[</span><span class="mi">8700</span><span class="p">,</span> <span class="mi">9900</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">5850</span><span class="p">,</span> <span class="mi">6440</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">6440</span><span class="p">,</span> <span class="mi">6750</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">6750</span><span class="p">,</span> <span class="mi">7200</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">7200</span><span class="p">,</span> <span class="mi">7700</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">7700</span><span class="p">,</span> <span class="mi">8265</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">8265</span><span class="p">,</span> <span class="mi">8602</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">8602</span><span class="p">,</span> <span class="mi">8731</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">8731</span><span class="p">,</span> <span class="mi">9275</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">9275</span><span class="p">,</span> <span class="mi">9500</span><span class="p">]</span>
 </pre></div>
 </div>
 <div class="section" id="sparse-field-case">
@@ -169,16 +180,16 @@ may contaminate the zlevel or eigenspectra.</td>
 </pre></div>
 </div>
 </div>
-<div class="section" id="saturated-field-case">
-<h2>Saturated Field Case<a class="headerlink" href="#saturated-field-case" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="saturated-field-case-and-time-series-sky">
+<h2>Saturated Field Case and Time Series Sky<a class="headerlink" href="#saturated-field-case-and-time-series-sky" title="Permalink to this headline">¶</a></h2>
 <p>This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation.</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="s">&#39;Offset_Field_CUBE.fits&#39;</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;Offset_ZAP_SVD.fits&#39;</span><span class="p">)</span>
 <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure. A series sky datacubes can also be used to identify time varying components of the sky.  For example if one particular band of lines is present at the beginning of the exposure and absent at the end of the exposure. In this case it is best to take a sky frame before and after the science frame. This is most helpful in the saturated field case, since the offset frames are taken at a different time than the science frame. To use this option, simply provide a list of offset file names.</p>
+<p>The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure. A series sky datacubes can also be used to identify time varying components of the sky.  For example if one particular set of sky lines is present at the beginning of the exposure and absent at the end of the exposure. In this case it is best to take a sky frame before and after the science frame. This is most helpful in the saturated field case, since the offset frames are taken at a different time than the science frame. To use this option, simply provide a list of offset file names.</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">OffsetCubeList</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;OffsetFieldCUBE1.fits&#39;</span><span class="p">,</span><span class="s">&#39;OffsetFieldCUBE2.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OffsetFieldCUBE3.fits&#39;</span><span class="p">]</span>
-<span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="n">OffsetCubeList</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;Offset_ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">zlevel</span><span class="o">=</span><span class="s">&#39;sigclip&#39;</span><span class="p">)</span>
+<span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="n">OffsetCubeList</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;Offset_ZAP_SVD.fits&#39;</span><span class="p">)</span>
 <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -197,7 +208,8 @@ may contaminate the zlevel or eigenspectra.</td>
 <p>This step is only an intermediary step in the full ZAP process as a way to create a clean input into the SVD calculation, but this function allows you to run it as a standalone step.</p>
 <p><strong>continuum removal</strong></p>
 <p>This function applies a filter on the datacube that removes most continuum features. This function allows for the enhancement of emission line characteristics. The filtering method has been enhanced by multiprocessing to produce a rapid result. It can be called as below:</p>
-<div class="highlight-python"><pre>zap.contsubfits(musecubefits, contsubfn='CONTSUB_CUBE.fits', cfilter=100):</pre>
+<div class="highlight-python"><div class="highlight"><pre>zap.contsubfits(musecubefits, contsubfn=&#39;CONTSUB_CUBE.fits&#39;, cfilter=100):
+</pre></div>
 </div>
 <p>It applies a nested set of filters, one uniform of width 3 pixels and one median with a width defined by cfilter. This filter differs from the new enhanced method in the ZAP process.</p>
 </div>
@@ -210,40 +222,40 @@ may contaminate the zlevel or eigenspectra.</td>
 </div>
 <p>The run method operates on the datacube, and retains all of the data and methods necessary to
 process a final data cube in a python class named zclass. You can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows:</p>
-<div class="highlight-python"><pre>from mpdaf_user import zap
+<div class="highlight-python"><div class="highlight"><pre>from mpdaf_user import zap
 from matplotlib import pyplot as plt
 
-zobj = zap.interactive('INPUT.fits', pevals=1) #choose 1% of modes per segment
+zobj = zap.interactive(&#39;INPUT.fits&#39;, pevals=1) #choose 1% of modes per segment
 
 #investigate the dataproduct with pyplot
 plt.figure()
 
 #plot a spectrum extracted from the original cube
-plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), 'b', alpha=0.3)
+plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), &#39;b&#39;, alpha=0.3)
 
 #plot a spectrum of the cleaned ZAP dataproduct
-plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2)), 'g')
+plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2)), &#39;g&#39;)
 
 #choose just the major mode
 zobj.reprocess(nevals=1)
 
 #plot a spectrum extracted from the original cube
-plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), 'b', alpha=0.3)
+plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), &#39;b&#39;, alpha=0.3)
 
 #plot a spectrum of the cleaned ZAP dataproduct
-plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'g')
+plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), &#39;g&#39;)
 
 #choose some number of modes by hand
 zobj.reprocess(nevals=[2,5,2,4,6,7,9,8,5])
 
 #plot a spectrum
-plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'k')
+plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), &#39;k&#39;)
 
 #Use the optimization algorithm to identify the best number of modes per segment
 zobj.optimize()
 
 #compare to the previous versions
-plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'r')
+plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), &#39;r&#39;)
 
 #identify a pixel in the dispersion axis that shows a residual feature in the original
 plt.figure()
@@ -254,10 +266,11 @@ plt.figure()
 plt.matshow(zobj.cleancube[2903,:,:])
 
 #write the processed cube
-zobj.writecube('DATACUBE_ZAP.fits')
+zobj.writecube(&#39;DATACUBE_ZAP.fits&#39;)
 
 #or merge the zap datacube into to whole inout datacube, replacing the data extension
-zobj.writefits(outcubefits='DATACUBE_FINAL_ZAP.fits')</pre>
+zobj.writefits(outcubefits=&#39;DATACUBE_FINAL_ZAP.fits&#39;)
+</pre></div>
 </div>
 </div>
 <div class="section" id="zclass">
@@ -272,25 +285,25 @@ zobj.writefits(outcubefits='DATACUBE_FINAL_ZAP.fits')</pre>
 <p>contarray - A 2d array containing the subtracted continuum per spaxel.</p>
 <p>cube - The original data cube with the zlevel subtraction performed per spaxel.</p>
 <dl class="docutils">
-<dt>especeval - A list containing the full set of eigenspectra and eigenvalues generated by the </dt>
+<dt>especeval - A list containing the full set of eigenspectra and eigenvalues generated by the</dt>
 <dd>SVD calculation that is used toy reconstruct the entire datacube.</dd>
-<dt>laxis - A 1d array containing the wavelength solution generated from the header </dt>
+<dt>laxis - A 1d array containing the wavelength solution generated from the header</dt>
 <dd>parameters.</dd>
 </dl>
 <p>lparams - An array of parameters taken from the header to generate the wavelength solution.</p>
 <p>lranges - A list of the wavelength bin limits used in segmenting the sepctrum for SVD.</p>
 <p>lmin,lmax - the wavelength limits placed on the datacube</p>
 <dl class="docutils">
-<dt>nancube - A 3d boolean datacube containing True in voxels where a NaN value was replaced </dt>
+<dt>nancube - A 3d boolean datacube containing True in voxels where a NaN value was replaced</dt>
 <dd>with an interpolation.</dd>
-<dt>nevals - A 1d array containing the number of eigenvalues used per segment to reconstruct </dt>
+<dt>nevals - A 1d array containing the number of eigenvalues used per segment to reconstruct</dt>
 <dd>the residuals.</dd>
 </dl>
 <p>normstack - A normalized version of the datacube decunstructed into a 2d array.</p>
 <dl class="docutils">
-<dt>nsegments - The number of divisions in wavelength space that the cube is cut into in order </dt>
+<dt>nsegments - The number of divisions in wavelength space that the cube is cut into in order</dt>
 <dd>to perform the SVD.</dd>
-<dt>varlist - An array for each segment with the variance curve, calculated for the </dt>
+<dt>varlist - An array for each segment with the variance curve, calculated for the</dt>
 <dd>optimize method.</dd>
 </dl>
 <p>pranges - The pixel indices of the bounding regions for each spectral segment.</p>
@@ -299,7 +312,7 @@ zobj.writefits(outcubefits='DATACUBE_FINAL_ZAP.fits')</pre>
 <p>run_zlevel - Boolean indicating that the zero level correction was used.</p>
 <p>stack - The datacube deconstructed into a 2d array for use in the the SVD.</p>
 <dl class="docutils">
-<dt>subespeceval - The subset of eigenvalues and eigenspectra used to reconstruct the sky </dt>
+<dt>subespeceval - The subset of eigenvalues and eigenspectra used to reconstruct the sky</dt>
 <dd>residuals.</dd>
 <dt>variancearray - A list of length nsegments containing variances calculated per spaxel used</dt>
 <dd>for normalization</dd>
@@ -309,7 +322,7 @@ zobj.writefits(outcubefits='DATACUBE_FINAL_ZAP.fits')</pre>
 </div></blockquote>
 <dl class="method">
 <dt id="zap.zclass.chooseevals">
-<tt class="descname">chooseevals</tt><big>(</big><em>nevals=</em><span class="optional">[</span><span class="optional">]</span>, <em>pevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.chooseevals" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">chooseevals</tt><big>(</big><em>nevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>pevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.chooseevals" title="Permalink to this definition">¶</a></dt>
 <dd><p>Choose the number of eigenspectra/evals to use for reconstruction</p>
 <p>user supplies the number of eigen spectra to be used (neval) or the percentage
 of the eigenspectra that were calculated (peval) from each spectral segment to be used.</p>
@@ -333,10 +346,10 @@ provide an array that defines neval or peval per segment.</p>
 <dt id="zap.zclass.optimize">
 <tt class="descname">optimize</tt><big>(</big><big>)</big><a class="headerlink" href="#zap.zclass.optimize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Function to optimize the number of components used to characterize the residuals.</p>
-<p>This function calculates the variance per segment with an increasing number of 
-eigenspectra/eigenvalues. It then deterimines the point at which the second derivative 
+<p>This function calculates the variance per segment with an increasing number of
+eigenspectra/eigenvalues. It then deterimines the point at which the second derivative
 of this variance curve reaches zero. When this occurs, the linear reduction in variance
-is attributable to the removal of astronomical features rather than emission line 
+is attributable to the removal of astronomical features rather than emission line
 residuals.</p>
 </dd></dl>
 
@@ -356,8 +369,8 @@ datacube.</p>
 
 <dl class="method">
 <dt id="zap.zclass.reprocess">
-<tt class="descname">reprocess</tt><big>(</big><em>pevals=</em><span class="optional">[</span><span class="optional">]</span>, <em>nevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.reprocess" title="Permalink to this definition">¶</a></dt>
-<dd><p>A method that redoes the eigenvalue selection, reconstruction, and remolding of the 
+<tt class="descname">reprocess</tt><big>(</big><em>pevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>nevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.reprocess" title="Permalink to this definition">¶</a></dt>
+<dd><p>A method that redoes the eigenvalue selection, reconstruction, and remolding of the
 data.</p>
 </dd></dl>
 
@@ -400,14 +413,12 @@ data.</p>
         <div class="sphinxsidebarwrapper">
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Welcome to ZAP&#8217;s documentation!</a><ul>
-</ul>
-</li>
+<li><a class="reference internal" href="#">Welcome to ZAP&#8217;s documentation!</a></li>
 <li><a class="reference internal" href="#examples">Examples</a><ul>
 <li><a class="reference internal" href="#sparse-field-case">Sparse Field Case</a></li>
 <li><a class="reference internal" href="#partially-filled-case">Partially Filled Case</a></li>
 <li><a class="reference internal" href="#pre-determined-zlevel-and-eigenspectra">Pre-determined zlevel and eigenspectra</a></li>
-<li><a class="reference internal" href="#saturated-field-case">Saturated Field Case</a></li>
+<li><a class="reference internal" href="#saturated-field-case-and-time-series-sky">Saturated Field Case and Time Series Sky</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#top-level-functions">Top Level Functions</a></li>
@@ -449,7 +460,7 @@ data.</p>
     </div>
     <div class="footer">
         &copy; Copyright 2014, Kurt Soto, Simon Lilly.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
     </div>
   </body>
 </html>

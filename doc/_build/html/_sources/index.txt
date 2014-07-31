@@ -37,12 +37,21 @@ clean     True      Interpolates over NaN values in the datacube to allow proces
 zlevel    'median'  This option is used to define the method for determining the zeroth order 
                     subtraction of the sky. This is used to remove any systematic sky feature 
 		    that exists over the whole field. Options are 'median', 'sigclip', and 'none'.
+		    The 'none' option should only be applied when ZAP is applied to enhance a 
+		    previous sky subtraction.
 
 q         0         Quartile selection, this option will remove the top n quartiles of the 
                     dataset to calculate of the zlsky. This option works well set to 1 with the 
 		    'sigclip' option.
 
-cfilter   100       Size of the filterbox used to remove the continuum features in order to
+cftype    'median'  The type of filtering that is applied to remove the continuum.  'weight' 
+                    refers to the weighted median, which uses the calculated zlevel sky as the
+		    weight. 'median' refers to a rolling median filter with a nested small 
+		    uniform filter. The 'weight' option provides a better result, but is much
+		    slower (an additional 10 minutes on a single exposure) and should only be 
+		    run in the complete sky subtraction case.
+
+cfwidth   300       Size of the filterbox used to remove the continuum features in order to
                     sterilize the basis set used to calculate the eigenbasis.
 
 optimize  True      A flag used to call the optimization method. This automatically determines the
@@ -65,17 +74,19 @@ mask      ''        (only used with the SVDoutput method) A 2D fits image to exc
 
 ========  ========  ==============================================================================
 
-The code can handle datacubes trimmed in wavelength space. Since the code uses the correlation of segments of the emission line spectrum, it is best to trim the cube at specific wavelengths. The cube can include any connected subset of these segments, i.e. 6400 - 8200 Angstroms. ::
+The code can handle datacubes trimmed in wavelength space. Since the code uses the correlation of segments of the emission line spectrum, it is best to trim the cube at specific wavelengths. The cube can include any connected subset of these segments. (for example 6400 - 8200 Angstroms) ::
 
-  [4600, 5400]
+  [4500, 5400]
   [5400, 5850]
-  [5850, 6400]
-  [6400, 6700]
-  [6700, 7150]
-  [7150, 7700]
-  [7700, 8200]
-  [8200, 8700]
-  [8700, 9900]
+  [5850, 6440]
+  [6440, 6750]
+  [6750, 7200]
+  [7200, 7700]
+  [7700, 8265]
+  [8265, 8602]
+  [8602, 8731]
+  [8731, 9275]
+  [9275, 9500]
 
 
 Sparse Field Case
@@ -110,18 +121,18 @@ Another option is to use a mask to isolate a sky within an exposure to pre-deter
   zap.SVDoutput('INPUT.fits', svdfn='Masked_ZAP_SVD.fits', mask='maskfilename.fits') # create SVD file
   zap.process('INPUT.fits', 'OUTPUT.fits', extSVD='ZAP_SVD.fits')
 
-Saturated Field Case
---------------------
+Saturated Field Case and Time Series Sky
+----------------------------------------
 
 This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation. ::
 
   zap.SVDoutput('Offset_Field_CUBE.fits', svdfn='Offset_ZAP_SVD.fits')
   zap.process('INPUT.fits', 'OUTPUT.fits', extSVD='ZAP_SVD.fits')
 
-The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure. A series sky datacubes can also be used to identify time varying components of the sky.  For example if one particular band of lines is present at the beginning of the exposure and absent at the end of the exposure. In this case it is best to take a sky frame before and after the science frame. This is most helpful in the saturated field case, since the offset frames are taken at a different time than the science frame. To use this option, simply provide a list of offset file names. ::
+The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure. A series sky datacubes can also be used to identify time varying components of the sky.  For example if one particular set of sky lines is present at the beginning of the exposure and absent at the end of the exposure. In this case it is best to take a sky frame before and after the science frame. This is most helpful in the saturated field case, since the offset frames are taken at a different time than the science frame. To use this option, simply provide a list of offset file names. ::
 
   OffsetCubeList = ['OffsetFieldCUBE1.fits','OffsetFieldCUBE2.fits', 'OffsetFieldCUBE3.fits']
-  zap.SVDoutput(OffsetCubeList, svdfn='Offset_ZAP_SVD.fits', zlevel='sigclip')
+  zap.SVDoutput(OffsetCubeList, svdfn='Offset_ZAP_SVD.fits')
   zap.process('INPUT.fits', 'OUTPUT.fits', extSVD='ZAP_SVD.fits')
 
 Top Level Functions
