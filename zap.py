@@ -33,7 +33,7 @@ except:
 ##################################################################################################
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zlevel='median',
-            q=0, cftype='median', cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False, 
+            q=0, cftype='weight', cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False,
             extSVD=''):
     """
     Performs the entire ZAP sky subtraction algorithm on an input fits file and writes the
@@ -65,7 +65,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
     zobj.mergefits(outcubefits)
 
 
-def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cftype='median', 
+def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cftype='weight', 
                 pevals=[], nevals=[], optimize=False, silent=False, extSVD=''):
     """
     Performs the entire ZAP sky subtraction algorithm on an input datacube and header. A class
@@ -87,7 +87,7 @@ def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cft
     return zobj
 
 def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True, zlevel='median', q=0,
-              cftype='median', cfwidth=300, mask=''):
+              cftype='weight', cfwidth=300, mask=''):
     """
     Performs the SVD decomposition of the datacube for use in a different datacube.
 
@@ -794,7 +794,10 @@ class zclass:
             std2=deriv2[.5 * (noptpix-2):].std()*2
 
             #look for crossing points. When they get within 1 sigma of mean in settled region.
-            cross = np.append([False, False], np.abs(smderiv2) <= (mn2 + std2)) #pad by 2 for 2nd
+            cross1 = np.append([False], deriv >= (mn1 - std1)) #pad by 1 for 1st deriv
+            cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2)) #pad by 2 for 2nd
+            
+            cross = np.logical_or(cross1,cross2)
 
             self.nevals[i] = np.where(cross)[0][0]
 
@@ -905,7 +908,7 @@ class zclass:
         #write for later use
         hdu.writeto(svdfn)
 
-    def _plotvarcurve(self, i=0):
+    def plotvarcurve(self, i=0):
     
         if len(self.varlist) == 0:
             print 'No varlist found. The optimize method must be run first. \n'
@@ -914,8 +917,6 @@ class zclass:
         #optimize
         deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1]
         deriv2 = (np.roll(deriv,-1)-deriv)[:-1]
-        smderiv = ndi.uniform_filter(deriv,3)
-        smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
         
         noptpix=self.varlist[i].size
         
@@ -929,22 +930,28 @@ class zclass:
         ax= fig.add_subplot(3,1,1)
         plt.plot(self.varlist[i],linewidth=3)
         plt.plot([self.nevals[i],self.nevals[i]],[min(self.varlist[i]),max(self.varlist[i])])
+        plt.ylabel('Variance')
         
         ax= fig.add_subplot(3,1,2)
         plt.plot(np.arange(deriv.size),deriv)
-        plt.plot(np.arange(deriv.size),smderiv, 'r')
         plt.plot([0,len(deriv)],[mn1,mn1],'k')
         plt.plot([0,len(deriv)],[mn1-std1,mn1-std1],'0.5')
         plt.plot([self.nevals[i]-1,self.nevals[i]-1],[min(deriv),max(deriv)])
+        plt.ylabel('d/dn Variance')
 
         ax= fig.add_subplot(3,1,3)
         plt.plot(np.arange(deriv2.size),np.abs(deriv2))
-        plt.plot(np.arange(deriv2.size),np.abs(smderiv2), 'r')
         plt.plot([0,len(deriv2)],[mn2,mn2],'k')
         plt.plot([0,len(deriv2)],[mn2+std2,mn2+std2],'0.5')
         plt.plot([self.nevals[i]-2,self.nevals[i]-2],[min(deriv2),max(deriv2)])
-        plt.suptitle(i)
+        plt.ylabel('(d^2/dn^2) Variance')
+        plt.xlabel('Number of Components')
 
+        plt.suptitle('Segment {0}, {1} - {2} Angstroms'.format(i, 
+                                                               self.lranges[i][0],
+                                                               self.lranges[i][1]))
+        
+        
 
 ##################################################################################################
 ##################################### Helper Functions ###########################################

@@ -1,4 +1,4 @@
-__version__ = '0.4'
-__date__ = '2014/07/31'
+__version__ = '0.5'
+__date__ = '2014/08/11'
 
 from zap import *
