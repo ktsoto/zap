@@ -107,6 +107,10 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True, zlevel='median', q
     if clean != False:
         zobj._nanclean()
 
+    #if mask is supplied, apply it
+    if mask != '':
+        zobj._applymask(mask)
+
     # Extract the spectra that we will be working with
     zobj._extract()
 
@@ -483,8 +487,6 @@ class zclass:
                 zlstack.sort(axis = 1)
                 zlstack=zlstack[:, 0:zlstack.shape[1] * (4-self.zlq) * 0.25]
 
-
-
             manager = multiprocessing.Manager()
             return_dict = manager.dict()
             jobs = []
@@ -497,13 +499,16 @@ class zclass:
 
                 #multiprocess the zlevel calculation, operating per segment
                 for i in range(nseg):
-                    p = multiprocessing.Process(target=_isigclip, args=(i,
-                                                                        zlstack,
-                                                                        self.pranges,
-                                                                        return_dict))
+                    p = multiprocessing.Process(target=_imedian, args=(i,
+                                                                       zlstack,
+                                                                       self.pranges,
+                                                                       return_dict))
                     jobs.append(p)
                     p.start()
-
+                
+                #gather the results
+                for proc in jobs:
+                    proc.join()
 
             #Do an iterative sigma clip
             elif calctype == 'sigclip':
@@ -518,10 +523,9 @@ class zclass:
                     jobs.append(p)
                     p.start()
 
-            #gather the results
-            for proc in jobs:
-                proc.join()
-                
+                for proc in jobs:
+                    proc.join()
+
             zlsky=[]
             segs=return_dict.values()
             for seg in segs:
@@ -847,6 +851,7 @@ class zclass:
 
     #apply a mask to the input data in order to provide a cleaner basis set
     def _applymask(self, mask):
+        print 'Applying Mask for SVD Calculation file {0}'.format(mask)
         hmsk=pyfits.open(mask)
         old_settings = np.seterr(divide='ignore')
         self.cube = self.cube / hmsk[0].data[np.newaxis,:,:]
@@ -1111,7 +1116,7 @@ def _cfmedian(stack, cfwidth=300, silent=False):
         
         jobs.append(p)
         p.start()
-
+    
     #gather the results
     for proc in jobs:
         proc.join()
