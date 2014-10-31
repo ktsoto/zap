@@ -27,6 +27,7 @@ try:
     from astropy.io import fits as pyfits
 except:
     import pyfits
+import pdb
 
 ##################################################################################################
 ################################### Top Level Functions ##########################################
@@ -34,7 +35,7 @@ except:
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zlevel='median',
             q=0, cftype='weight', cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False,
-            extSVD=''):
+            extSVD='', skycubefits='', rec_settings='', enhanced_optimize=False):
     """
     Performs the entire ZAP sky subtraction algorithm on an input fits file and writes the
     product to an output fits file.
@@ -52,21 +53,50 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
         print 'output filename "{0}" exists'.format(outcubefits)
         return
 
+    if os.path.exists(skycubefits):
+        print 'output filename "{0}" exists'.format(skycubefits)
+        return
+
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
         print 'weighted median requires a zlevel calculation'
         return
-
+    
     zobj = zclass(musecubefits)
 
+    if rec_settings != '':
+        if rec_settings == 'filled':
+            if extSVD == '':
+                print 'Filled Field case requires external SVD'
+                return
+            enhanced_optimize = True
+            cfwidth = 10
+            cftype = 'weight'
+            print 'Using recommended settings for filled field case:'
+            print "cfwidth = 10, cftype = 'weight', enhanced_optimize=True" 
+        if rec_settings == 'sparse':
+            print 'Using recommended settings for sparse field case:'
+            print "cfwidth = 300, cftype = 'weight', enhanced_optimize=True" 
+            enhanced_optimize = True
+            cfwidth = 300
+            cftype = 'weight'
+
+    if enhanced_optimize == True:
+        optimize == True
+
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
-              pevals=pevals, nevals=nevals, optimize=optimize, silent=silent, extSVD=extSVD)
-
+              pevals=pevals, nevals=nevals, optimize=optimize, silent=silent, 
+              enhanced_optimize=enhanced_optimize, extSVD=extSVD)
+    
+    if skycubefits != '':
+        zobj.writeskycube(skycubefits=skycubefits)
+    
     zobj.mergefits(outcubefits)
-
+    
 
 def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cftype='weight', 
-                pevals=[], nevals=[], optimize=False, silent=False, extSVD=''):
+                pevals=[], nevals=[], optimize=False, silent=False, extSVD='',rec_settings='', 
+                enhanced_optimize=False):
     """
     Performs the entire ZAP sky subtraction algorithm on an input datacube and header. A class
     containing all of the necessary data to examine the result and modify as desired.
@@ -81,12 +111,33 @@ def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cft
     #create an instance
     zobj= zclass(musecubefits)
 
+    if rec_settings != '':
+        if rec_settings == 'filled':
+            if extSVD == '':
+                print 'Filled Field case requires external SVD'
+                return
+            enhanced_optimize = True
+            cfwidth = 10
+            cftype = 'weight'
+            print 'Using recommended settings for filled field case:'
+            print "cfwidth = 15, cftype = 'weight', enhanced_optimization=True" 
+        if rec_settings == 'sparse':
+            print 'Using recommended settings for sparse field case:'
+            print "cfwidth = 15, cftype = 'weight', enhanced_optimization=True" 
+            enhanced_optimize = True
+            cfwidth = 300
+            cftype = 'weight'
+
+    if enhanced_optimize == True:
+        optimize == True
+
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
-              pevals=pevals, nevals=nevals, optimize=optimize, silent=silent, extSVD=extSVD)
+              pevals=pevals, nevals=nevals, optimize=optimize, enhanced_optimize = enhanced_optimize,
+              silent=silent, extSVD=extSVD)
 
     return zobj
 
-def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True, zlevel='median', q=0,
+def SVDoutput(musecubefitslst, svdfn='ZAP_SVD.fits', clean=True, zlevel='median', q=0,
               cftype='weight', cfwidth=300, mask=''):
     """
     Performs the SVD decomposition of the datacube for use in a different datacube.
@@ -102,26 +153,61 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True, zlevel='median', q
         print 'weighted median requires a zlevel calculation'
         return
 
-    zobj= zclass(musecubefits)
-    # clean up the nan values
-    if clean != False:
-        zobj._nanclean()
+    if type(musecubefitslst) == list:
+        print 'Combining multiple inputs'
+        
+        for i in range(len(musecubefitslst)):
+    
+            zobj= zclass(musecubefitslst[i])
+            # clean up the nan values
+            if clean != False:
+                zobj._nanclean()
+        
+            #if mask is supplied, apply it
+            if mask != '':
+                zobj._applymask(mask[i])
+        
+                # Extract the spectra that we will be working with
+            zobj._extract()
+        
+            #remove the median along the spectral axis
+            if zlevel.lower() != 'none':
+                zobj._zlevel(calctype=zlevel, q=q)
+            
+            if i == 0:
+                combstack=zobj.stack
+                zlstack=[zobj.zlsky]
+            else:
+                combstack=np.append(combstack, zobj.stack, axis=1)
+                zlstack=np.append(zlstack,[zobj.zlsky], axis=0)
+        zl=zlstack.mean(axis=0)
 
-    #if mask is supplied, apply it
-    if mask != '':
-        zobj._applymask(mask)
+        zobj.zlsky = zl
+        zobj.stack = combstack
+    else:
 
-    # Extract the spectra that we will be working with
-    zobj._extract()
+        zobj= zclass(musecubefitslst)
+        # clean up the nan values
+        if clean != False:
+            zobj._nanclean()
+        
+        #if mask is supplied, apply it
+        if mask != '':
+            zobj._applymask(mask)
 
-    #remove the median along the spectral axis
-    if zlevel.lower() != 'none':
-        zobj._zlevel(calctype=zlevel, q=q)
+        # Extract the spectra that we will be working with
+        zobj._extract()
+
+        #remove the median along the spectral axis
+        if zlevel.lower() != 'none':
+            zobj._zlevel(calctype=zlevel, q=q)
 
     #remove the continuum level - this is multiprocessed to speed it up
+    print 'Continuum Filtering'
     zobj._continuumfilter(cftype=cftype, cfwidth=cfwidth)
 
     # do the multiprocessed SVD calculation
+    print 'Calculating SVD'
     zobj._msvd()
 
     #write to file
@@ -246,26 +332,10 @@ class zclass:
         on the known optimal spectral range of MUSE.
         """
         
+        hdu = pyfits.open(musecubefits)
+        cube = hdu[1].data
+        header = hdu[1].header
 
-        # Combine cubes for time series calculation
-        if type(musecubefits) == list:
-            print 'Combining multiple inputs'
-            cube=[]
-            for i in range(len(musecubefits)):
-                print 'stacking cube #{0}'.format(i)
-                hdu = pyfits.open(musecubefits[i])
-                icube = hdu[1].data
-                header = hdu[1].header
-                if i > 0:
-                    cdim=min(cube.shape[1],icube.shape[1])
-                    icube = icube[:,:cdim,:] # trim to the shape in one axis
-                    cube = np.append(cube[:,:cdim,:], icube, axis=2)
-                else:
-                    cube = icube
-        else:
-            hdu = pyfits.open(musecubefits)
-            cube = hdu[1].data
-            header = hdu[1].header
 
         self.musecubefits = musecubefits
 
@@ -354,7 +424,7 @@ class zclass:
 
 
     def _run(self, clean=True, zlevel='median', q=0, cftype='weight', cfwidth=300, pevals=[], 
-             nevals=[], optimize=False, silent=False, extSVD=''):
+             nevals=[], optimize=False, silent=False, extSVD='', enhanced_optimize=False):
 
         """
 
@@ -368,7 +438,9 @@ class zclass:
         """
 
         t0=time()
-
+        
+        self.enhanced_optimize = enhanced_optimize
+        
         print 'Preparing Data for eigenspectra calculation'
         # clean up the nan values
         if clean != False:
@@ -386,14 +458,20 @@ class zclass:
             self.zlq=q
 
         #remove the continuum level - this is multiprocessed to speed it up
+        print 'Applying Continuum Filter'
         self._continuumfilter(cfwidth=cfwidth, cftype=cftype)
 
         # do the multiprocessed SVD calculation
         if extSVD == '':
             self._msvd()
+            #remove strong sources and use the previous SVD to help isolate sky components
+            if enhanced_optimize == True:
+                print 'Applying Continuum Filter for object avoidance in eigenvalues'
+                self._continuumfilter(cfwidth=10, cftype='weight')
         else:
             self._externalSVD(extSVD)
 
+        
         # choose some fraction of eigenspectra or some finite number of eigenspectra
         if optimize == True or (nevals == [] and pevals == []):
             self.optimize()
@@ -558,7 +636,8 @@ class zclass:
         if cftype != 'weight':
             cftype = 'median'
         self._cftype = cftype
-
+        
+        
         if cftype == 'median':
             self.contarray=_cfmedian(self.stack, cfwidth=self._cfwidth)
         elif cftype == 'weight':
@@ -783,25 +862,44 @@ class zclass:
 
         for i in range(nseg):
 
+
+            if self.enhanced_optimize == False:
+                #optimize
+                deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1]
+                deriv2 = (np.roll(deriv,-1)-deriv)[:-1]
+                smderiv = ndi.uniform_filter(deriv,3)
+                smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
+                
+                noptpix=self.varlist[i].size
+                
+                #statistics on the derivatives
+                mn1=deriv[.5 * (noptpix-2):].mean()
+                std1=deriv[.5 * (noptpix-2):].std()*2
+                mn2=deriv2[.5 * (noptpix-2):].mean()
+                std2=deriv2[.5 * (noptpix-2):].std()*2
+                #look for crossing points. When they get within 1 sigma of mean in settled region.
+                cross1 = np.append([False], deriv >= (mn1 - std1)) #pad by 1 for 1st deriv
+                cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2)) #pad by 2 for 2nd
+                cross = np.logical_or(cross1,cross2)
+            if self.enhanced_optimize == True:
+                print 'Enhanced Optimization'
+
             #optimize
-            deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1]
-            deriv2 = (np.roll(deriv,-1)-deriv)[:-1]
-            smderiv = ndi.uniform_filter(deriv,3)
-            smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
+                deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1]
+                deriv2 = (np.roll(deriv,-1)-deriv)[:-1]
+                smderiv = ndi.uniform_filter(deriv,3)
+                smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
+                
+                noptpix=self.varlist[i].size
+                
+                #statistics on the derivatives
+                mn1=deriv[.75 * (noptpix-2):].mean()
+                std1=deriv[.75 * (noptpix-2):].std()
+                mn2=deriv2[.75 * (noptpix-2):].mean()
+                std2=deriv2[.75 * (noptpix-2):].std()
 
-            noptpix=self.varlist[i].size
-
-            #statistics on the derivatives
-            mn1=deriv[.5 * (noptpix-2):].mean()
-            std1=deriv[.5 * (noptpix-2):].std()*2
-            mn2=deriv2[.5 * (noptpix-2):].mean()
-            std2=deriv2[.5 * (noptpix-2):].std()*2
-
-            #look for crossing points. When they get within 1 sigma of mean in settled region.
-            cross1 = np.append([False], deriv >= (mn1 - std1)) #pad by 1 for 1st deriv
-            cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2)) #pad by 2 for 2nd
-            
-            cross = np.logical_or(cross1,cross2)
+                #cross = np.append([False, False], np.abs(smderiv2) <= (mn2 + std2)) #pad by 2 for 2nd
+                cross = np.append([False], smderiv >= (mn1 - std1)) #pad by 1 for 1st deriv
 
             self.nevals[i] = np.where(cross)[0][0]
 
@@ -849,6 +947,30 @@ class zclass:
 
         self.especeval = especeval
 
+    def _recalc_evals(self, extSVD):
+
+        print 'Recalculating eigenvalues for strong line object removal'
+
+        #normalize the variance in the segments
+        self.variancearray = np.zeros((nseg, self.stack.shape[1]))
+
+        for i in range(nseg):
+            self.variancearray[i,:] = np.var(self.normstack[
+                self.pranges[i,0]:self.pranges[i,1], :], axis=0)
+            self.normstack[self.pranges[i,0]:self.pranges[i,1], :] = self.normstack[
+                self.pranges[i,0]:self.pranges[i,1], :] / self.variancearray[i,:]
+
+        especeval=[]
+        for i in range(nseg):
+            #eigenspectra = svdhdu[i+1].data
+            ns = self.normstack[self.pranges[i][0]:self.pranges[i][1]]
+            evals = np.transpose(np.transpose(ns).dot(especeval[i][0]))
+            especeval.append([eigenspectra,evals])
+
+        self.especeval = especeval
+
+
+
     #apply a mask to the input data in order to provide a cleaner basis set
     def _applymask(self, mask):
         print 'Applying Mask for SVD Calculation file {0}'.format(mask)
@@ -862,6 +984,9 @@ class zclass:
     ##############################################################################################
     def _cubetowrite(self):
         return np.concatenate((self.cubetrimb,self.cleancube,self.cubetrimr), axis=0)
+
+    def _skycubetowrite(self):
+        return np.concatenate((self.cubetrimb,self.cube-self.cleancube,self.cubetrimr), axis=0)
 
     def writecube(self, outcubefits='DATACUBE_ZAP.fits'):
         """
@@ -880,6 +1005,23 @@ class zclass:
         outhdu = pyfits.PrimaryHDU(data=outcube,header=outhead)
         outhdu.writeto(outcubefits)
 
+    def writeskycube(self, skycubefits='SKYCUBE_ZAP.fits'):
+        """
+        write the processed datacube to an individual fits file.
+        """
+
+        if os.path.exists(skycubefits):
+            print 'output filename "{0}" exists'.format(outcubefits)
+            return
+
+        #fix up for writing
+        outcube = self._skycubetowrite()
+        outhead = _newheader(self)
+
+        #create hdu and write
+        outhdu = pyfits.PrimaryHDU(data=outcube,header=outhead)
+        outhdu.writeto(skycubefits)
+    
     def mergefits(self, outcubefits):
         """
         Merge the ZAP cube into the full muse datacube and write
@@ -918,19 +1060,35 @@ class zclass:
         if len(self.varlist) == 0:
             print 'No varlist found. The optimize method must be run first. \n'
             return
-        
-        #optimize
-        deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1]
-        deriv2 = (np.roll(deriv,-1)-deriv)[:-1]
-        
-        noptpix=self.varlist[i].size
-        
-        #statistics on the derivatives
-        mn1=deriv[.5 * (noptpix-2):].mean()
-        std1=deriv[.5 * (noptpix-2):].std()*2
-        mn2=deriv2[.5 * (noptpix-2):].mean()
-        std2=deriv2[.5 * (noptpix-2):].std()*2
 
+        if self.enhanced_optimize == False:        
+            #optimize
+            deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1]
+            deriv2 = (np.roll(deriv,-1)-deriv)[:-1]
+            
+            noptpix=self.varlist[i].size
+            
+            #statistics on the derivatives
+            mn1=deriv[.5 * (noptpix-2):].mean()
+            std1=deriv[.5 * (noptpix-2):].std()*2
+            mn2=deriv2[.5 * (noptpix-2):].mean()
+            std2=deriv2[.5 * (noptpix-2):].std()*2
+        if self.enhanced_optimize == True:
+            
+            #optimize
+            deriv = (np.roll(self.varlist[i],-1)-self.varlist[i])[:-1]
+            deriv2 = (np.roll(deriv,-1)-deriv)[:-1]
+            smderiv = ndi.uniform_filter(deriv,3)
+            smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
+            
+            noptpix=self.varlist[i].size
+            
+            #statistics on the derivatives
+            mn1=deriv[.75 * (noptpix-2):].mean()
+            std1=deriv[.75 * (noptpix-2):].std()
+            mn2=deriv2[.75 * (noptpix-2):].mean()
+            std2=deriv2[.75 * (noptpix-2):].std()
+            
         fig=plt.figure(figsize=[10,15])
         ax= fig.add_subplot(3,1,1)
         plt.plot(self.varlist[i],linewidth=3)
@@ -1026,7 +1184,8 @@ def _cfweight(stack, weight, cfwidth=300, silent=False):
     """
 
     t0=time()
-    print 'Continuum Subtracting - weighted median filter method'
+    if silent != False:
+        print 'Continuum Subtracting - weighted median filter method'
     nmedpieces=multiprocessing.cpu_count()
 
     #define bins
@@ -1089,7 +1248,8 @@ def _cfmedian(stack, cfwidth=300, silent=False):
     """
 
     t0=time()
-    print 'Continuum Subtracting - median filter method'
+    if silent != False:
+        print 'Continuum Subtracting - median filter method'
     nmedpieces=multiprocessing.cpu_count()
 
     #define bins
