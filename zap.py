@@ -120,7 +120,7 @@ def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cft
             cfwidth = 10
             cftype = 'weight'
             print 'Using recommended settings for filled field case:'
-            print "cfwidth = 15, cftype = 'weight', enhanced_optimization=True" 
+            print "cfwidth = 10, cftype = 'weight', enhanced_optimization=True" 
         if rec_settings == 'sparse':
             print 'Using recommended settings for sparse field case:'
             print "cfwidth = 15, cftype = 'weight', enhanced_optimization=True" 
