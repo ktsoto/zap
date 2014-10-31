@@ -65,7 +65,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
     zobj = zclass(musecubefits)
 
     if rec_settings != '':
-        if rec_settings == 'filled':
+        if rec_settings == 'filled' or rec_settings == 'extSVD':
             if extSVD == '':
                 print 'Filled Field case requires external SVD'
                 return
@@ -112,7 +112,7 @@ def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cft
     zobj= zclass(musecubefits)
 
     if rec_settings != '':
-        if rec_settings == 'filled':
+        if rec_settings == 'filled' or rec_settings == 'extSVD':
             if extSVD == '':
                 print 'Filled Field case requires external SVD'
                 return
@@ -899,7 +899,7 @@ class zclass:
                 std2=deriv2[.75 * (noptpix-2):].std()
 
                 #cross = np.append([False, False], np.abs(smderiv2) <= (mn2 + std2)) #pad by 2 for 2nd
-                cross = np.append([False], smderiv >= (mn1 - std1)) #pad by 1 for 1st deriv
+                cross = np.append([False], deriv >= (mn1 - std1)) #pad by 1 for 1st deriv
 
             self.nevals[i] = np.where(cross)[0][0]
 
