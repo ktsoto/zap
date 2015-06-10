@@ -81,8 +81,8 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
             cfwidth = 300
             cftype = 'weight'
 
-    if enhanced_optimize == True:
-        optimize == True
+    if enhanced_optimize:
+        optimize = True
 
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
               pevals=pevals, nevals=nevals, optimize=optimize, silent=silent,
@@ -129,8 +129,8 @@ def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cft
             cfwidth = 300
             cftype = 'weight'
 
-    if enhanced_optimize == True:
-        optimize == True
+    if enhanced_optimize:
+        optimize = True
 
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
               pevals=pevals, nevals=nevals, optimize=optimize,
@@ -433,8 +433,9 @@ class zclass:
         self.varlist = np.array([])  # container for variance curves
         hdu.close()
 
-    def _run(self, clean=True, zlevel='median', q=0, cftype='weight', cfwidth=300, pevals=[],
-             nevals=[], optimize=False, silent=False, extSVD='', enhanced_optimize=False):
+    def _run(self, clean=True, zlevel='median', q=0, cftype='weight',
+             cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False,
+             extSVD='', enhanced_optimize=False):
         """
         Perform all zclass to ZAP a datacube, including NaN re/masking,
         deconstruction into "stacks", zerolevel subraction, continuum removal,
@@ -473,19 +474,23 @@ class zclass:
         # do the multiprocessed SVD calculation
         if extSVD == '':
             self._msvd()
-            # remove strong sources and use the previous SVD to help isolate sky components
-            if enhanced_optimize == True:
-                print 'Applying Continuum Filter for object avoidance in eigenvalues'
+            # remove strong sources and use the previous SVD to help isolate
+            # sky components
+            if enhanced_optimize:
+                print('Applying Continuum Filter for object avoidance in '
+                      'eigenvalues')
                 self._continuumfilter(cfwidth=10, cftype='weight')
         else:
             self._externalSVD(extSVD)
 
-        # choose some fraction of eigenspectra or some finite number of eigenspectra
-        if optimize == True or (nevals == [] and pevals == []):
+        # choose some fraction of eigenspectra or some finite number of
+        # eigenspectra
+        if optimize or (nevals == [] and pevals == []):
             self.optimize()
         else:
             self.chooseevals(pevals=pevals, nevals=nevals)
-            self.reconstruct()  # reconstruct the sky residuals using the subset of eigenspace
+            # reconstruct the sky residuals using the subset of eigenspace
+            self.reconstruct()
 
         # stuff the new spectra back into the cube
         self.remold()
@@ -852,43 +857,35 @@ class zclass:
         self.nevals = np.zeros(nseg, dtype=int)
 
         for i in range(nseg):
+            # optimize
+            deriv = (np.roll(self.varlist[i], -1) - self.varlist[i])[:-1]
+            deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
+            # smderiv = ndi.uniform_filter(deriv, 3)
+            # smderiv2 = ndi.uniform_filter(
+            #     ndi.uniform_filter(np.abs(deriv2), 3), 3)
+            noptpix = self.varlist[i].size
 
-            if self.enhanced_optimize == False:
-                # optimize
-                deriv = (np.roll(self.varlist[i], -1) - self.varlist[i])[:-1]
-                deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
-                # smderiv = ndi.uniform_filter(deriv, 3)
-                # smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
-
-                noptpix = self.varlist[i].size
-
+            if not self.enhanced_optimize:
                 # statistics on the derivatives
                 mn1 = deriv[.5 * (noptpix - 2):].mean()
                 std1 = deriv[.5 * (noptpix - 2):].std() * 2
                 mn2 = deriv2[.5 * (noptpix - 2):].mean()
                 std2 = deriv2[.5 * (noptpix - 2):].std() * 2
-                # look for crossing points. When they get within 1 sigma of mean in settled region.
+                # look for crossing points. When they get within 1 sigma of
+                # mean in settled region.
                 cross1 = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
                 cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2))  # pad by 2 for 2nd
                 cross = np.logical_or(cross1, cross2)
-            if self.enhanced_optimize == True:
+            else:
                 print 'Enhanced Optimization'
-
-            # optimize
-                deriv = (np.roll(self.varlist[i], -1) - self.varlist[i])[:-1]
-                deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
-                # smderiv = ndi.uniform_filter(deriv, 3)
-                # smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
-
-                noptpix = self.varlist[i].size
-
                 # statistics on the derivatives
                 mn1 = deriv[.75 * (noptpix - 2):].mean()
                 std1 = deriv[.75 * (noptpix - 2):].std()
                 mn2 = deriv2[.75 * (noptpix - 2):].mean()
                 std2 = deriv2[.75 * (noptpix - 2):].std()
 
-                # cross = np.append([False, False], np.abs(smderiv2) <= (mn2 + std2)) #pad by 2 for 2nd
+                # cross = np.append([False, False],
+                #                   np.abs(smderiv2) <= (mn2 + std2)) #pad by 2 for 2nd
                 cross = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
 
             self.nevals[i] = np.where(cross)[0][0]
@@ -898,9 +895,9 @@ class zclass:
 
         print 'Time to optimize: {0} s'.format(int(time() - t0))
 
-    ###########################################################################
-    ###################################### Extra Functions ####################
-    ###########################################################################
+    # #########################################################################
+    # #################################### Extra Functions ####################
+    # #########################################################################
 
     def make_contcube(self):
         # remold the continuum array so it can be investigated
