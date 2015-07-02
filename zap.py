@@ -15,18 +15,17 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy as np
-from time import time
-from scipy import ndimage as ndi
-from multiprocessing import Pool
-import multiprocessing
 import matplotlib.pyplot as plt
+import multiprocessing
+import numpy as np
 import os
+
+from astropy.io import fits as pyfits
+from functools import wraps
+from multiprocessing import Pool
+from scipy import ndimage as ndi
 from scipy.stats import sigmaclip
-try:
-    from astropy.io import fits as pyfits
-except:
-    import pyfits
+from time import time
 
 ###############################################################################
 ################################### Top Level Functions #######################
@@ -267,6 +266,22 @@ def nancleanfits(musecubefits, outfn='NANCLEAN_CUBE.fits', rejectratio=0.25,
     hdu.writeto(outfn)
 
 
+def check_file_exists(filename):
+    if filename is not None and os.path.exists(filename):
+        raise Exception('File "{0}" exists'.format(filename))
+
+
+def timeit(func):
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        t0 = time()
+        res = func(*args, **kwargs)
+        if not kwargs.get('silent', False):
+            print '{} - Time: {:.2f} sec.'.format(func.__name__, time() - t0)
+        return res
+    return wrapped
+
+
 ###############################################################################
 ##################################### Process Steps ###########################
 ###############################################################################
@@ -433,6 +448,7 @@ class zclass:
         self.varlist = np.array([])  # container for variance curves
         hdu.close()
 
+    @timeit
     def _run(self, clean=True, zlevel='median', q=0, cftype='weight',
              cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False,
              extSVD='', enhanced_optimize=False):
@@ -446,8 +462,6 @@ class zclass:
         routine progresses.
 
         """
-
-        t0 = time()
 
         self.enhanced_optimize = enhanced_optimize
 
@@ -495,9 +509,6 @@ class zclass:
         # stuff the new spectra back into the cube
         self.remold()
 
-        t = time() - t0
-        print 'Time to Fully processs: {0}'.format(int(t))
-
     # Clean up the nan value spaxels
     def _nanclean(self, silent=False):
         """
@@ -514,6 +525,7 @@ class zclass:
         self.cube = cleancube[0]
         self.nancube = cleancube[1]
 
+    @timeit
     def _extract(self, silent=False):
         """
         Deconstruct the datacube into a 2d array, since spatial information is
@@ -542,6 +554,7 @@ class zclass:
         self.run_zlevel = 'extSVD'
         svdhdu.close()
 
+    @timeit
     def _zlevel(self, calctype='median', q=0):
         """
         Removes a 'zero' level from each spectral plane. Spatial information is
@@ -560,10 +573,7 @@ class zclass:
         """
 
         if calctype != 'none':
-
             print 'Subtracting Zero Level'
-            t0 = time()
-
             zlstack = self.stack.copy()
 
             # choose the included quartiles
@@ -617,9 +627,6 @@ class zclass:
             self.zlsky = np.array(zlsky)
 
             self.stack = self.stack - self.zlsky[:, np.newaxis]
-            t = time() - t0
-            print 'Time to remove zero level: {0} s'.format(int(t))
-
         else:
             print 'Skipping zlevel subtraction'
 
@@ -651,6 +658,7 @@ class zclass:
         # remove continuum features
         self.normstack = self.stack - self.contarray
 
+    @timeit
     def _msvd(self, silent=False):
         """
         Multiprocessed singular value decomposition.
@@ -660,7 +668,6 @@ class zclass:
         to the individual svd methods.
 
         """
-        t0 = time()
 
     # split the range
 
@@ -697,10 +704,6 @@ class zclass:
         especeval = []
         for i in range(nseg):
             especeval.append(return_dict[i])
-
-        t = time() - t0
-        if silent == False:
-            print 'Time to run svd : {0} s'.format(int(t))
 
         self.especeval = especeval
 
@@ -817,6 +820,7 @@ class zclass:
         self.reconstruct()
         self.remold()
 
+    @timeit
     def optimize(self):
         """
         Function to optimize the number of components used to characterize the
@@ -830,8 +834,6 @@ class zclass:
 
         """
         print 'Optimizing'
-
-        t0 = time()
 
         nseg = len(self.especeval)
 
@@ -892,8 +894,6 @@ class zclass:
 
         self.chooseevals(nevals=self.nevals)
         self.reconstruct()
-
-        print 'Time to optimize: {0} s'.format(int(time() - t0))
 
     # #########################################################################
     # #################################### Extra Functions ####################
@@ -1106,6 +1106,7 @@ class zclass:
 
 
 ##### Continuum Filtering #####
+
 def rolling_window(a, window):  # function for striding to help speed up
     shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
     strides = a.strides + (a.strides[-1],)
@@ -1157,6 +1158,7 @@ def wmedian(spec, wt, cfwidth=300):
     return wmed
 
 
+@timeit
 def _cfweight(stack, weight, cfwidth=300, silent=False):
     """
     A multiprocessed implementation of the continuum removal. This process
@@ -1170,7 +1172,6 @@ def _cfweight(stack, weight, cfwidth=300, silent=False):
     normstack - "normalized" version of the stack with the continuua removed
     """
 
-    t0 = time()
     if silent != False:
         print 'Continuum Subtracting - weighted median filter method'
     nmedpieces = multiprocessing.cpu_count()
@@ -1200,15 +1201,10 @@ def _cfweight(stack, weight, cfwidth=300, silent=False):
     for proc in jobs:
         proc.join()
 
-    contarray = np.concatenate(return_dict, axis=1)
-
-    if silent == False:
-        print 'Time to Subtract : {0} s'.format(int(time() - t0))
-
-    return contarray
+    return np.concatenate(return_dict, axis=1)
 
 
-def _icfmedian(i, stack, cfwidth, sprange, return_dict):  # for distributing data to the pool
+def _icfmedian(i, stack, cfwidth, sprange, return_dict):
     """
     Helper function to distribute data to Pool for SVD
     """
@@ -1218,6 +1214,7 @@ def _icfmedian(i, stack, cfwidth, sprange, return_dict):  # for distributing dat
     return_dict[i] = result
 
 
+@timeit
 def _cfmedian(stack, cfwidth=300, silent=False):
     """
     A multiprocessed implementation of the continuum removal. This process
@@ -1231,7 +1228,6 @@ def _cfmedian(stack, cfwidth=300, silent=False):
     normstack - "normalized" version of the stack with the continuua removed
     """
 
-    t0 = time()
     if silent != False:
         print 'Continuum Subtracting - median filter method'
     nmedpieces = multiprocessing.cpu_count()
@@ -1261,16 +1257,12 @@ def _cfmedian(stack, cfwidth=300, silent=False):
     for proc in jobs:
         proc.join()
 
-    contarray = np.concatenate(return_dict, axis=1)
-
-    if silent == False:
-        print 'Time to Subtract : {0} s'.format(int(time() - t0))
-
-    return contarray
+    return np.concatenate(return_dict, axis=1)
 
 
-##### SVD #####
-def _isvd(i, prange, normstack, return_dict, silent=False):  # for distributing data to the pool
+# ### SVD #####
+
+def _isvd(i, prange, normstack, return_dict, silent=False):
     """
     Perform single value decomposition and Calculate PC amplitudes (projection)
     outputs are eigenspectra operates on a 2D array.
@@ -1295,7 +1287,8 @@ def _isvd(i, prange, normstack, return_dict, silent=False):  # for distributing 
     return_dict[i] = [eigenspectra, evals]
 
 
-##### RECONSTRUCTION  #####
+# ### RECONSTRUCTION  #####
+
 def _ireconstruct(iespeceval):
     """
     Reconstruct the residuals from a given set of eigenspectra and eigenvalues
@@ -1406,16 +1399,15 @@ def _imedian(i, stack, pranges, return_dict):
     return_dict[i] = medn
 
 
-# Clean up the nan value spaxels
+@timeit
 def _nanclean(cube, rejectratio=0.25, boxsz=1, silent=False):
     """
     Detects NaN values in cube and removes them by replacing them with an
     interpolation of the nearest neighbors in the data cube. The positions in
     the cube are retained in nancube for later remasking.
-    """
-    t0 = time()
 
-    cleancube = cube.copy()                #
+    """
+    cleancube = cube.copy()
     badcube = np.logical_not(np.isfinite(cleancube))        # find NaNs
     badmap = (badcube).sum(axis=0)  # map of total nans in a spaxel
 
@@ -1460,9 +1452,5 @@ def _nanclean(cube, rejectratio=0.25, boxsz=1, silent=False):
     fix[np.logical_not(neighborless)] = \
         tfix[np.logical_not(neighborless)] / nfix[np.logical_not(neighborless)]
     cleancube[z, y, x] = fix
-
-    t = time() - t0
-    if silent == False:
-        print 'Time to clean NaNs: {0} s'.format(int(t))
 
     return cleancube, badcube
