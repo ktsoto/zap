@@ -1000,10 +1000,8 @@ class zclass:
         print 'Applying Mask for SVD Calculation file {0}'.format(mask)
         #mask is >1 for objects, 0 for sky so that people can use sextractor
         hmsk=pyfits.open(mask)
-        old_settings = np.seterr(divide='ignore')
         bmask = hmsk[0].data.astype(bool)
-        self.cube[bmask[np.newaxis,:,:]] = np.nan #self.cube / bmask[np.newaxis,:,:]
-        np.seterr(old_settings['divide'])
+        self.cube[:, bmask] = np.nan #self.cube / bmask[np.newaxis,:,:]
 
     ##############################################################################################
     ##################################### Output Functions #######################################
