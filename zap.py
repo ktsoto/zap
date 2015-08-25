@@ -954,13 +954,14 @@ class zclass:
 
         self.especeval = especeval
 
-    # apply a mask to the input data in order to provide a cleaner basis set
     def _applymask(self, mask):
+        """Apply a mask to the input data in order to provide a cleaner basis
+        set"""
         print 'Applying Mask for SVD Calculation file {0}'.format(mask)
+        # mask is >1 for objects, 0 for sky so that people can use sextractor
         hmsk = pyfits.open(mask)
-        old_settings = np.seterr(divide='ignore')
-        self.cube = self.cube / hmsk[0].data[np.newaxis, :, :]
-        np.seterr(old_settings['divide'])
+        bmask = hmsk[1].data.astype(bool)
+        self.cube[:, bmask] = np.nan
 
     ###########################################################################
     ##################################### Output Functions ####################
