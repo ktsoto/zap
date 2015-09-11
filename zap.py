@@ -550,7 +550,7 @@ class zclass:
         # remove the same zero level
         print 'Using external zlevel'
         self.zlsky = svdhdu[0].data
-        self.stack = self.stack - self.zlsky[:, np.newaxis]
+        self.stack -= self.zlsky[:, np.newaxis]
         self.run_zlevel = 'extSVD'
         svdhdu.close()
 
@@ -626,7 +626,7 @@ class zclass:
                 zlsky = zlsky + seg
             self.zlsky = np.array(zlsky)
 
-            self.stack = self.stack - self.zlsky[:, np.newaxis]
+            self.stack -= self.zlsky[:, np.newaxis]
         else:
             print 'Skipping zlevel subtraction'
 
@@ -669,11 +669,10 @@ class zclass:
 
         """
 
-    # split the range
-
+        # split the range
         nseg = len(self.pranges)
 
-    # normalize the variance in the segments
+        # normalize the variance in the segments
         self.variancearray = np.zeros((nseg, self.stack.shape[1]))
 
         for i in range(nseg):
@@ -794,7 +793,7 @@ class zclass:
 
         # rescale to correct variance
         for i in range(nseg):
-            reconpieces[i] = (reconpieces[i] * self.variancearray[i, :])
+            reconpieces[i] *= self.variancearray[i, :]
         self.recon = np.concatenate(reconpieces)
 
     # stuff the stack back into a cube
@@ -1296,9 +1295,10 @@ def _ireconstruct(iespeceval):
 
     eigenspectra, evals = iespeceval
     nrows = (evals.shape)[1]
-    reconpiece = np.zeros([(eigenspectra.shape)[0], nrows])  # make container
-    for i in np.arange(nrows):  # this loop is FASTER than a fully vectorized one-liner command
-        evalvect = (evals[:, i])  # choose single eval set
+    reconpiece = np.zeros([eigenspectra.shape[0], nrows])  # make container
+    # this loop is FASTER than a fully vectorized one-liner command
+    for i in np.arange(nrows):
+        evalvect = evals[:, i]  # choose single eval set
         reconpiece[:, i] = np.sum(eigenspectra * evalvect, axis=1)  # broadcast evals on evects and sum
 
     return reconpiece
