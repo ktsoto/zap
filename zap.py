@@ -15,7 +15,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import matplotlib.pyplot as plt
 import multiprocessing
 import numpy as np
 import os
@@ -425,7 +424,7 @@ class zclass:
                                             skyseg <= laxmax)], laxmax + 10)]))
 
         self.lranges = lranges
-        self.nsegments = len(lranges)
+        # self.nsegments = len(lranges)
         self.lparams = [header['NAXIS3'], header['CRVAL3'], header['CD3_3'],
                         header['CRPIX3']]
 
@@ -501,10 +500,12 @@ class zclass:
         # eigenspectra
         if optimize or (nevals == [] and pevals == []):
             self.optimize()
+            self.chooseevals(nevals=self.nevals)
         else:
             self.chooseevals(pevals=pevals, nevals=nevals)
-            # reconstruct the sky residuals using the subset of eigenspace
-            self.reconstruct()
+
+        # reconstruct the sky residuals using the subset of eigenspace
+        self.reconstruct()
 
         # stuff the new spectra back into the cube
         self.remold()
@@ -516,10 +517,8 @@ class zclass:
         interpolation of the nearest neighbors in the data cube. The positions
         in the cube are retained in nancube for later remasking.
         """
-        boxsz = self._boxsz
-        rejectratio = self._rejectratio
-
-        cleancube = _nanclean(self.cube, rejectratio=rejectratio, boxsz=boxsz, silent=silent)
+        cleancube = _nanclean(self.cube, rejectratio=self._rejectratio,
+                              boxsz=self._boxsz, silent=silent)
 
         self.run_clean = True
         self.cube = cleancube[0]
@@ -574,7 +573,6 @@ class zclass:
 
         if calctype != 'none':
             print 'Subtracting Zero Level'
-            zlstack = self.stack.copy()
 
             # choose the included quartiles
             q = int(q)
@@ -583,49 +581,41 @@ class zclass:
             self.zlq = q
             if q >= 1 and q <= 3:
                 print 'Removing top {0} quartiles from zlevel calculation'.format(self.zlq)
+                zlstack = self.stack.copy()
                 zlstack.sort(axis=1)
-                zlstack = zlstack[:, 0:zlstack.shape[1] * (4 - self.zlq) * 0.25]
+                zlstack = zlstack[:, 0:zlstack.shape[1] *
+                                  (4 - self.zlq) * 0.25]
+            else:
+                zlstack = self.stack
 
             manager = multiprocessing.Manager()
             return_dict = manager.dict()
             jobs = []
-            nseg = len(self.pranges)  # choose some arbitrary number of processes
+            # choose some arbitrary number of processes
+            nseg = multiprocessing.cpu_count()
+            pranges = np.linspace(self.pranges.min(), self.pranges.max(),
+                                  nseg + 1, dtype=int)
 
-            # Do a simple median calculation
             if calctype == 'median':
                 print 'Median zlevel calculation'
-
-                # multiprocess the zlevel calculation, operating per segment
-                for i in range(nseg):
-                    p = multiprocessing.Process(target=_imedian, args=(
-                        i, zlstack, self.pranges, return_dict))
-                    jobs.append(p)
-                    p.start()
-
-                # gather the results
-                for proc in jobs:
-                    proc.join()
-
-            # Do an iterative sigma clip
+                func = _imedian
             elif calctype == 'sigclip':
                 print 'Iterative Sigma Clipping zlevel calculation'
+                func = _isigclip
 
-                # multiprocess the zlevel calculation, operating per segment
-                for i in range(nseg):
-                    p = multiprocessing.Process(target=_isigclip, args=(
-                        i, zlstack, self.pranges, return_dict))
-                    jobs.append(p)
-                    p.start()
+            # multiprocess the zlevel calculation, operating per segment
+            for i in range(nseg):
+                istack = zlstack[pranges[i]:pranges[i + 1], :]
+                p = multiprocessing.Process(target=func,
+                                            args=(i, istack, return_dict))
+                jobs.append(p)
+                p.start()
 
-                for proc in jobs:
-                    proc.join()
+            # gather the results
+            for proc in jobs:
+                proc.join()
 
-            zlsky = []
-            segs = return_dict.values()
-            for seg in segs:
-                zlsky = zlsky + seg
-            self.zlsky = np.array(zlsky)
-
+            self.zlsky = np.hstack(return_dict.values())
             self.stack -= self.zlsky[:, np.newaxis]
         else:
             print 'Skipping zlevel subtraction'
@@ -652,7 +642,8 @@ class zclass:
         if cftype == 'median':
             self.contarray = _cfmedian(self.stack, cfwidth=self._cfwidth)
         elif cftype == 'weight':
-            self.contarray = _cfweight(self.stack, np.abs(self.zlsky - (np.max(self.zlsky) + 1)),
+            weight = np.abs(self.zlsky - (np.max(self.zlsky) + 1))
+            self.contarray = _cfweight(self.stack, weight,
                                        cfwidth=self._cfwidth)
 
         # remove continuum features
@@ -676,17 +667,16 @@ class zclass:
         self.variancearray = np.zeros((nseg, self.stack.shape[1]))
 
         for i in range(nseg):
-            self.variancearray[i, :] = np.var(self.normstack[
-                self.pranges[i, 0]:self.pranges[i, 1], :], axis=0)
-            self.normstack[self.pranges[i, 0]:self.pranges[i, 1], :] = self.normstack[
-                self.pranges[i, 0]:self.pranges[i, 1], :] / self.variancearray[i, :]
+            pmin, pmax = self.pranges[i]
+            self.variancearray[i, :] = np.var(self.normstack[pmin:pmax, :],
+                                              axis=0)
+            self.normstack[pmin:pmax, :] /= self.variancearray[i, :]
 
         print 'Beginning SVD on {0} segments'.format(nseg)
 
         # for receiving results of processes
         manager = multiprocessing.Manager()
         return_dict = manager.dict()
-
         jobs = []
 
         # multiprocess the svd calculation, operating per segment
@@ -700,11 +690,7 @@ class zclass:
         for proc in jobs:
             proc.join()
 
-        especeval = []
-        for i in range(nseg):
-            especeval.append(return_dict[i])
-
-        self.especeval = especeval
+        self.especeval = return_dict.values()
 
     def chooseevals(self, nevals=[], pevals=[]):
         """
@@ -770,6 +756,7 @@ class zclass:
         self.subespeceval = subespeceval
         self.nevals = nevals
 
+    @timeit
     def reconstruct(self):
         """
         Multiprocessed residual reconstruction.
@@ -782,8 +769,8 @@ class zclass:
         nseg = len(self.especeval)
 
         # take each ministack and run them independently
-        reconpieces = Parallel(n_jobs=-1, max_nbytes=1e6, verbose=10)(
-            delayed(_ireconstruct)(i) for i in self.subespeceval)
+        reconpieces = Parallel(n_jobs=-1, max_nbytes=1e6, verbose=5)(
+            delayed(_ireconstruct)(*i) for i in self.subespeceval)
 
         # rescale to correct variance
         for i in range(nseg):
@@ -829,6 +816,7 @@ class zclass:
         print 'Optimizing'
 
         nseg = len(self.especeval)
+        normstack = self.stack - self.contarray
 
         # for receiving results of processes
         manager = multiprocessing.Manager()
@@ -839,8 +827,8 @@ class zclass:
         # multiprocess the variance calculation, operating per segment
         for i in range(nseg):
             p = multiprocessing.Process(target=_ivarcurve, args=(
-                i, self.stack, self.pranges, self.especeval,
-                self.variancearray, self.contarray, return_dict))
+                i, normstack[self.pranges[i, 0]:self.pranges[i, 1], :],
+                self.especeval[i], self.variancearray[i], return_dict))
             jobs.append(p)
             p.start()
 
@@ -884,9 +872,6 @@ class zclass:
                 cross = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
 
             self.nevals[i] = np.where(cross)[0][0]
-
-        self.chooseevals(nevals=self.nevals)
-        self.reconstruct()
 
     # #########################################################################
     # #################################### Extra Functions ####################
@@ -1068,6 +1053,7 @@ class zclass:
             mn2 = deriv2[.75 * (noptpix - 2):].mean()
             std2 = deriv2[.75 * (noptpix - 2):].std()
 
+        import matplotlib.pyplot as plt
         fig = plt.figure(figsize=[10, 15])
         ax = fig.add_subplot(3, 1, 1)
         plt.plot(self.varlist[i], linewidth=3)
@@ -1165,12 +1151,11 @@ def _cfweight(stack, weight, cfwidth=300, silent=False):
     normstack - "normalized" version of the stack with the continuua removed
     """
 
-    if silent != False:
+    if silent is False:
         print 'Continuum Subtracting - weighted median filter method'
     nmedpieces = multiprocessing.cpu_count()
 
     # define bins
-
     edges = np.append(np.floor(
         np.arange(0, stack.shape[1], stack.shape[1] / np.float(nmedpieces))),
         stack.shape[1])
@@ -1266,28 +1251,24 @@ def _isvd(i, prange, normstack, return_dict, silent=False):
     """
 
     inormstack = normstack[prange[0]:prange[1], :]
-
     inormstack = np.transpose(inormstack)
 
     U, s, V = np.linalg.svd(inormstack, full_matrices=0)
     eigenspectra = np.transpose(V)
-    evals = (inormstack).dot(np.transpose(V))
-    evals = np.transpose(evals)
+    evals = inormstack.dot(eigenspectra)
+    return_dict[i] = [eigenspectra, evals.T]
 
-    if silent == False:
+    if not silent:
         print 'Finished SVD Segment'
-
-    return_dict[i] = [eigenspectra, evals]
 
 
 # ### RECONSTRUCTION  #####
 
-def _ireconstruct(iespeceval):
+def _ireconstruct(eigenspectra, evals):
     """
     Reconstruct the residuals from a given set of eigenspectra and eigenvalues
     """
 
-    eigenspectra, evals = iespeceval
     nrows = (evals.shape)[1]
     reconpiece = np.zeros([eigenspectra.shape[0], nrows])  # make container
     # this loop is FASTER than a fully vectorized one-liner command
@@ -1298,7 +1279,10 @@ def _ireconstruct(iespeceval):
     return reconpiece
 
 
-def _ipreconstruct(i, iespeceval, precon):
+# ### OPTIMIZE #####
+
+
+def _ivarcurve(i, istack, iespeceval, ivariancearray, return_dict):
     """
     Reconstruct the residuals from a given set of eigenspectra and eigenvalues.
 
@@ -1307,35 +1291,26 @@ def _ipreconstruct(i, iespeceval, precon):
 
     """
 
-    eigenspectra, evals = iespeceval
-    eigenspectra = eigenspectra[:, i]
-    evals = evals[i, :]
-    reconpiece = precon + (eigenspectra[:, np.newaxis] * evals[np.newaxis, :])  # broadcast evals on evects and sum
-
-    return reconpiece
-
-##### OPTIMIZE #####
-
-
-def _ivarcurve(i, stack, pranges, especeval, variancearray, contarray, return_dict):
-
-    # segment the data
-    istack = (stack - contarray)[pranges[i, 0]:pranges[i, 1], :]
     iprecon = np.zeros_like(istack)
-    iespeceval = especeval[i]
-    ivariancearray = variancearray[i]
+    eigenspectra, evals = iespeceval
     ivarlist = []
-    totalnevals = int(np.round((iespeceval[1].shape[0]) * 0.25))
+    totalnevals = int(np.round(evals.shape[0] * 0.25))
 
     for nevals in range(totalnevals):
-        if nevals % (totalnevals * .1) <= 1:
-            print 'Seg {0}: {1}% complete '.format(i, int(nevals / (totalnevals - 1.) * 100.))
-        iprecon = _ipreconstruct(nevals, iespeceval, iprecon)
-        icleanstack = istack - (iprecon * ivariancearray)
-        ivarlist.append(np.var(icleanstack))  # calculate the variance on the cleaned segment
+        if nevals % (totalnevals * .2) <= 1:
+            print 'Seg {0}: {1}% complete '.format(
+                i, int(nevals / (totalnevals - 1.) * 100.))
 
-    ivarlist = np.array(ivarlist)
-    return_dict[i] = ivarlist
+        eig = eigenspectra[:, nevals]
+        ev = evals[nevals, :]
+        # broadcast evals on evects and sum
+        iprecon += (eig[:, np.newaxis] * ev[np.newaxis, :])
+
+        icleanstack = istack - (iprecon * ivariancearray)
+        # calculate the variance on the cleaned segment
+        ivarlist.append(np.var(icleanstack))
+
+    return_dict[i] = np.array(ivarlist)
 
 
 def _newheader(zobj):
@@ -1372,25 +1347,16 @@ def _newheader(zobj):
     return header
 
 
-def _isigclip(i, stack, pranges, return_dict):
-
-    istack = stack[pranges[i, 0]:pranges[i, 1], :]
+def _isigclip(i, istack, return_dict):
     mn = []
-
     for col in istack:
         clipped, bot, top = sigmaclip(col, low=3, high=3)
         mn.append(clipped.mean())
+    return_dict[i] = np.array(mn)
 
-    return_dict[i] = mn
 
-
-def _imedian(i, stack, pranges, return_dict):
-
-    istack = stack[pranges[i, 0]:pranges[i, 1], :]
-
-    medn = list(np.median(istack, axis=1))
-
-    return_dict[i] = medn
+def _imedian(i, istack, return_dict):
+    return_dict[i] = np.median(istack, axis=1)
 
 
 @timeit
@@ -1403,48 +1369,41 @@ def _nanclean(cube, rejectratio=0.25, boxsz=1, silent=False):
     """
     cleancube = cube.copy()
     badcube = np.logical_not(np.isfinite(cleancube))        # find NaNs
-    badmap = (badcube).sum(axis=0)  # map of total nans in a spaxel
+    badmap = badcube.sum(axis=0)  # map of total nans in a spaxel
 
-# choose some maximum number of bad pixels in the spaxel and extract positions
-    y, x = np.where(badmap > (rejectratio * (cleancube.shape)[0]))
-    nbadspax = len(y)
-    print "{0} spaxels rejected: > {1}% NaN pixels".format(nbadspax, rejectratio * 100)
+    # choose some maximum number of bad pixels in the spaxel and extract
+    # positions
+    badmask = badmap > (rejectratio * cleancube.shape[0])
+    print "{0} spaxels rejected: > {1}% NaN pixels".format(
+        np.count_nonzero(badmask), rejectratio * 100)
 
-# make cube mask of bad spaxels
-    bcube = np.ones(cleancube.shape, dtype=bool)
-    bcube[:, y, x] = False
+    # make cube mask of bad spaxels
+    # y, x = np.where(badmap > (rejectratio * cleancube.shape[0]))
+    # bcube = np.ones(cleancube.shape, dtype=bool)
+    # bcube[:, y, x] = False
+    # badcube = np.logical_and(badcube == True, bcube == True)  # combine masking
 
-    badcube = np.logical_and(badcube == True, bcube == True)  # combine masking
+    badcube &= (~badmask[np.newaxis, :, :])
     z, y, x = np.where(badcube)
 
     neighbor = np.zeros((z.size, (2 * boxsz + 1)**3))
     icounter = 0
     print "fixing {0} pixels".format(len(z))
 
-# loop over samplecubes
+    # loop over samplecubes
+    nz, ny, nx = cleancube.shape
     for j in range(-boxsz, boxsz + 1, 1):
         for k in range(-boxsz, boxsz + 1, 1):
             for l in range(-boxsz, boxsz + 1, 1):
                 iz, iy, ix = z + l, y + k, x + j
-                outx = np.logical_or(ix <= 0, ix >= (cleancube.shape)[2] - 1)
-                outy = np.logical_or(iy <= 0, iy >= (cleancube.shape)[1] - 1)
-                outz = np.logical_or(iz <= 0, iz >= (cleancube.shape)[0] - 1)
-                outsider = np.where(np.logical_or(np.logical_or(outx, outy), outz))
-                ix[ix < 0] = 0; ix[ix > (cleancube.shape)[2] - 1] = (cleancube.shape)[2] - 1
-                iy[iy < 0] = 0; iy[iy > (cleancube.shape)[1] - 1] = (cleancube.shape)[1] - 1
-                iz[iz < 0] = 0; iz[iz > (cleancube.shape)[0] - 1] = (cleancube.shape)[0] - 1
-                neighbor[:, icounter] = cleancube[iz, iy, ix]
+                outsider = ((ix <= 0) | (ix >= nx - 1) |
+                            (iy <= 0) | (iy >= ny - 1) |
+                            (iz <= 0) | (iz >= nz - 1))
+                ins = ~outsider
+                neighbor[ins, icounter] = cleancube[iz[ins], iy[ins], ix[ins]]
                 neighbor[outsider, icounter] = np.nan
                 icounter = icounter + 1
-    goodneighbor = np.isfinite(neighbor)
-    neighbor[np.logical_not(goodneighbor)] = 0
-    nfix = goodneighbor.sum(axis=1)
-    tfix = neighbor.sum(axis=1)
-    neighborless = nfix == 0
-    fix = np.zeros(z.size)
-    fix[neighborless] = np.nan
-    fix[np.logical_not(neighborless)] = \
-        tfix[np.logical_not(neighborless)] / nfix[np.logical_not(neighborless)]
-    cleancube[z, y, x] = fix
 
+    mn = np.ma.masked_invalid(neighbor)
+    cleancube[z, y, x] = mn.mean(axis=1).filled(np.nan)
     return cleancube, badcube
