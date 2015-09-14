@@ -22,7 +22,7 @@ import os
 
 from astropy.io import fits as pyfits
 from functools import wraps
-from multiprocessing import Pool
+from joblib import Parallel, delayed
 from scipy import ndimage as ndi
 from scipy.stats import sigmaclip
 from time import time
@@ -779,17 +779,11 @@ class zclass:
         """
 
         print 'Reconstructing Sky Residuals'
-
         nseg = len(self.especeval)
 
         # take each ministack and run them independently
-        pool = Pool(processes=nseg)  # start pool
-
-        # do the multiprocessing on each ministack and return eigenvalues/eigenvectors
-        reconpieces = pool.map(_ireconstruct, self.subespeceval)
-
-        pool.close()
-        pool.join()
+        reconpieces = Parallel(n_jobs=-1, max_nbytes=1e6, verbose=10)(
+            delayed(_ireconstruct)(i) for i in self.subespeceval)
 
         # rescale to correct variance
         for i in range(nseg):
