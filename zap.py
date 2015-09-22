@@ -21,7 +21,6 @@ import os
 
 from astropy.io import fits as pyfits
 from functools import wraps
-from joblib import Parallel, delayed
 from scipy import ndimage as ndi
 from scipy.stats import sigmaclip
 from time import time
@@ -758,24 +757,20 @@ class zclass:
 
     @timeit
     def reconstruct(self):
-        """
-        Multiprocessed residual reconstruction.
-
-        Distributes the trimmed eigenspectra/eigenvalues to the reconstruction
-        method.
+        """Reconstruct the residuals from a given set of eigenspectra and
+        eigenvalues
         """
 
         print 'Reconstructing Sky Residuals'
         nseg = len(self.especeval)
 
-        # take each ministack and run them independently
-        reconpieces = Parallel(n_jobs=-1, max_nbytes=1e6, verbose=5)(
-            delayed(_ireconstruct)(*i) for i in self.subespeceval)
+        rec = [(eig[:, :, np.newaxis] * ev[np.newaxis, :, :]).sum(axis=1)
+               for eig, ev in self.subespeceval]
 
         # rescale to correct variance
         for i in range(nseg):
-            reconpieces[i] *= self.variancearray[i, :]
-        self.recon = np.concatenate(reconpieces)
+            rec[i] *= self.variancearray[i, :]
+        self.recon = np.concatenate(rec)
 
     # stuff the stack back into a cube
     def remold(self):
@@ -1260,23 +1255,6 @@ def _isvd(i, prange, normstack, return_dict, silent=False):
 
     if not silent:
         print 'Finished SVD Segment'
-
-
-# ### RECONSTRUCTION  #####
-
-def _ireconstruct(eigenspectra, evals):
-    """
-    Reconstruct the residuals from a given set of eigenspectra and eigenvalues
-    """
-
-    nrows = (evals.shape)[1]
-    reconpiece = np.zeros([eigenspectra.shape[0], nrows])  # make container
-    # this loop is FASTER than a fully vectorized one-liner command
-    for i in np.arange(nrows):
-        evalvect = evals[:, i]  # choose single eval set
-        reconpiece[:, i] = np.sum(eigenspectra * evalvect, axis=1)  # broadcast evals on evects and sum
-
-    return reconpiece
 
 
 # ### OPTIMIZE #####
