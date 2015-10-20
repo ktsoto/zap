@@ -781,7 +781,7 @@ class zclass:
         print 'Applying correction and reshaping data product'
         self.cleancube = self.cube.copy()
         self.cleancube[:, self.y, self.x] = self.stack - self.recon
-        if self.run_clean == True:
+        if self.run_clean:
             self.cleancube[self.nancube] = np.nan
 
     # redo the residual reconstruction with a different set of parameters
@@ -838,9 +838,6 @@ class zclass:
             # optimize
             deriv = (np.roll(self.varlist[i], -1) - self.varlist[i])[:-1]
             deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
-            # smderiv = ndi.uniform_filter(deriv, 3)
-            # smderiv2 = ndi.uniform_filter(
-            #     ndi.uniform_filter(np.abs(deriv2), 3), 3)
             noptpix = self.varlist[i].size
 
             if not self.enhanced_optimize:
@@ -945,7 +942,8 @@ class zclass:
                               axis=0)
 
     def _skycubetowrite(self):
-        return np.concatenate((self.cubetrimb, self.cube - self.cleancube, self.cubetrimr), axis=0)
+        return np.concatenate((self.cubetrimb, self.cube - self.cleancube,
+                               self.cubetrimr), axis=0)
 
     def writecube(self, outcubefits='DATACUBE_ZAP.fits'):
         """
@@ -1014,63 +1012,55 @@ class zclass:
         # write for later use
         hdu.writeto(svdfn)
 
-    def plotvarcurve(self, i=0):
-
+    def plotvarcurve(self, i=0, ax=None):
         if len(self.varlist) == 0:
             print 'No varlist found. The optimize method must be run first. \n'
             return
 
-        if self.enhanced_optimize == False:
-            # optimize
-            deriv = (np.roll(self.varlist[i], -1) - self.varlist[i])[:-1]
-            deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
+        # optimize
+        deriv = (np.roll(self.varlist[i], -1) - self.varlist[i])[:-1]
+        deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
+        noptpix = self.varlist[i].size
 
-            noptpix = self.varlist[i].size
-
+        if not self.enhanced_optimize:
             # statistics on the derivatives
             mn1 = deriv[.5 * (noptpix - 2):].mean()
             std1 = deriv[.5 * (noptpix - 2):].std() * 2
             mn2 = deriv2[.5 * (noptpix - 2):].mean()
             std2 = deriv2[.5 * (noptpix - 2):].std() * 2
-        if self.enhanced_optimize == True:
-
-            # optimize
-            deriv = (np.roll(self.varlist[i], -1) - self.varlist[i])[:-1]
-            deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
-            # smderiv = ndi.uniform_filter(deriv, 3)
-            # smderiv2 = ndi.uniform_filter(ndi.uniform_filter(np.abs(deriv2), 3), 3)
-
-            noptpix = self.varlist[i].size
-
+        else:
             # statistics on the derivatives
             mn1 = deriv[.75 * (noptpix - 2):].mean()
             std1 = deriv[.75 * (noptpix - 2):].std()
             mn2 = deriv2[.75 * (noptpix - 2):].mean()
             std2 = deriv2[.75 * (noptpix - 2):].std()
 
-        import matplotlib.pyplot as plt
-        fig = plt.figure(figsize=[10, 15])
-        ax = fig.add_subplot(3, 1, 1)
-        plt.plot(self.varlist[i], linewidth=3)
-        plt.plot([self.nevals[i], self.nevals[i]], [min(self.varlist[i]), max(self.varlist[i])])
-        plt.ylabel('Variance')
+        if ax is None:
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots(3, 1, figsize=[10, 15])
 
-        ax = fig.add_subplot(3, 1, 2)
-        plt.plot(np.arange(deriv.size), deriv)
-        plt.plot([0, len(deriv)], [mn1, mn1], 'k')
-        plt.plot([0, len(deriv)], [mn1 - std1, mn1 - std1], '0.5')
-        plt.plot([self.nevals[i] - 1, self.nevals[i] - 1], [min(deriv), max(deriv)])
-        plt.ylabel('d/dn Variance')
+        ax1, ax2, ax3 = ax
+        ax1.plot(self.varlist[i], linewidth=3)
+        ax1.plot([self.nevals[i], self.nevals[i]],
+                 [min(self.varlist[i]), max(self.varlist[i])])
+        ax1.set_ylabel('Variance')
 
-        ax = fig.add_subplot(3, 1, 3)
-        plt.plot(np.arange(deriv2.size), np.abs(deriv2))
-        plt.plot([0, len(deriv2)], [mn2, mn2], 'k')
-        plt.plot([0, len(deriv2)], [mn2 + std2, mn2 + std2], '0.5')
-        plt.plot([self.nevals[i] - 2, self.nevals[i] - 2], [min(deriv2), max(deriv2)])
-        plt.ylabel('(d^2/dn^2) Variance')
-        plt.xlabel('Number of Components')
+        ax2.plot(np.arange(deriv.size), deriv)
+        ax2.plot([0, len(deriv)], [mn1, mn1], 'k')
+        ax2.plot([0, len(deriv)], [mn1 - std1, mn1 - std1], '0.5')
+        ax2.plot([self.nevals[i] - 1, self.nevals[i] - 1],
+                 [min(deriv), max(deriv)])
+        ax2.set_ylabel('d/dn Var')
 
-        plt.suptitle('Segment {0}, {1} - {2} Angstroms'.format(
+        ax3.plot(np.arange(deriv2.size), np.abs(deriv2))
+        ax3.plot([0, len(deriv2)], [mn2, mn2], 'k')
+        ax3.plot([0, len(deriv2)], [mn2 + std2, mn2 + std2], '0.5')
+        ax3.plot([self.nevals[i] - 2, self.nevals[i] - 2],
+                 [min(deriv2), max(deriv2)])
+        ax3.set_ylabel('(d^2/dn^2) Var')
+        # ax3.set_xlabel('Number of Components')
+
+        ax1.set_title('Segment {0}, {1} - {2} Angstroms'.format(
             i, self.lranges[i][0], self.lranges[i][1]))
 
 
