@@ -90,7 +90,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=False, zl
 
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
               pevals=pevals, nevals=nevals, optimize=optimize, silent=silent, 
-              enhanced_optimize=enhanced_optimize, extSVD=extSVD, refilter = refilter)
+              enhanced_optimize=enhanced_optimize, extSVD=extSVD)
     
     if skycubefits != '':
         zobj.writeskycube(skycubefits=skycubefits)
@@ -100,7 +100,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=False, zl
 
 def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=100, cftype='weight', 
                 pevals=[], nevals=[], optimize=False, silent=False, extSVD='',rec_settings='', 
-                enhanced_optimize=False, refilter = True):
+                enhanced_optimize=False):
     """
     Performs the entire ZAP sky subtraction algorithm on an input datacube and header. A class
     containing all of the necessary data to examine the result and modify as desired.
@@ -140,7 +140,7 @@ def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=100, cft
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
               pevals=pevals, nevals=nevals, optimize=optimize,
               enhanced_optimize = enhanced_optimize,
-              silent=silent, extSVD=extSVD, refilter=refilter)
+              silent=silent, extSVD=extSVD)
 
     return zobj
 
@@ -650,7 +650,7 @@ class zclass:
         normstack - "normalized" version of the stack with the continuua removed
         """
 
-        #self.stack[np.isnan(self.stack)] = 0
+        self.stack[np.isnan(self.stack)] = 0
         
         self._cfwidth = cfwidth
         if cftype != 'weight':
@@ -1154,19 +1154,16 @@ def rolling_window(a, window): #function for striding to help speed up
 def _icfweight(i, stack, wt, cfwidth, sprange, return_dict):
     istack = np.rollaxis(stack[:,sprange[0]:sprange[1]],1)
     result = np.rollaxis(np.array([wmedian(row, wt, cfwidth=cfwidth) for row in istack]),1)
-    #result = ndi.uniform_filter1d(result, 3, axis=0)
+    result = ndi.uniform_filter1d(result, 3, axis=0)
     return_dict[i] = result
 
 def wmedian(spec, wt, cfwidth=100):
-    
+
     # ignore the warning (feature not a bug)
     old_settings = np.seterr(divide='ignore') 
     spec = np.lib.pad(spec,(cfwidth,cfwidth),'constant', constant_values=0)
-    wnan = np.logical_not(np.isfinite(spec))
-    spec[wnan] = 0
     wt = np.lib.pad(wt,(cfwidth,cfwidth),'constant', 
                   constant_values=(np.min(wt)/1000.,np.min(wt)/1000.))
-    wt[wnan] = 0
 
     #do some striding for speed
     swin = rolling_window(spec, cfwidth) # create window container array
@@ -1383,27 +1380,25 @@ def _ipreconstruct(i, iespeceval, precon):
 def _ivarcurve(i, stack, pranges, especeval, variancearray,contarray, zlsky, return_dict):
 
     #segment the data
-    #istack = (stack-contarray)[pranges[i,0]:pranges[i,1],:]
-    #izlsky = zlsky[pranges[i,0]:pranges[i,1]][:,np.newaxis]*np.ones_like(istack)
-    #iprecon = np.zeros_like(istack)
-    #iespeceval = especeval[i]
-    #ivariancearray = variancearray[i]
-    #ivarlist = []
-    #totalnevals = int(np.round((iespeceval[1].shape[0])*0.25))
-    #
-    #for nevals in range(totalnevals):
-    #    if nevals % (totalnevals * .1) <= 1:
-    #        print 'Seg {0}: {1}% complete '.format(i, int(nevals/(totalnevals-1.)*100.))
-    #    iprecon = _ipreconstruct(nevals, iespeceval, iprecon)
-    #    icleanstack = istack - (iprecon * ivariancearray)
-    #    av = np.average(icleanstack, weights=(izlsky-np.min(izlsky))**2)
-    #    var = np.average((icleanstack - av)**2, weights=(izlsky-np.min(izlsky))**2)
-    #    #ivarlist.append(np.var(icleanstack)) #calculate the variance on the cleaned segment
-    #    ivarlist.append(var)
-    curve = zobj7.especeval[i][1].sum(axis=1)
-    ivarlist = (1-np.cumsum(np.abs(curve))/np.sum(np.abs(curve)))
+    istack = (stack-contarray)[pranges[i,0]:pranges[i,1],:]
+    izlsky = zlsky[pranges[i,0]:pranges[i,1]][:,np.newaxis]*np.ones_like(istack)
+    iprecon = np.zeros_like(istack)
+    iespeceval = especeval[i]
+    ivariancearray = variancearray[i]
+    ivarlist = []
+    totalnevals = int(np.round((iespeceval[1].shape[0])*0.25))
 
-    #ivarlist = np.array(ivarlist)
+    for nevals in range(totalnevals):
+        if nevals % (totalnevals * .1) <= 1:
+            print 'Seg {0}: {1}% complete '.format(i, int(nevals/(totalnevals-1.)*100.))
+        iprecon = _ipreconstruct(nevals, iespeceval, iprecon)
+        icleanstack = istack - (iprecon * ivariancearray)
+        av = np.average(icleanstack, weights=(izlsky-np.min(izlsky))**2)
+        var = np.average((icleanstack - av)**2, weights=(izlsky-np.min(izlsky))**2)
+        #ivarlist.append(np.var(icleanstack)) #calculate the variance on the cleaned segment
+        ivarlist.append(var)
+    
+    ivarlist = np.array(ivarlist)
     return_dict[i] = ivarlist
 
 def _newheader(zobj):
