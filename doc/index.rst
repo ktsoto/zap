@@ -19,54 +19,54 @@ In its most hands-off form, ZAP can take an input fits datacube, operate on it, 
   from mpdaf_user import zap
   zap.process('INPUT.fits', 'OUTPUT.fits')
 
-Care should be taken, however, since this case assumes a sparse field. 
+Care should be taken, however, since this case assumes a sparse field.
 
-There are a number of options that can be passed to the code which we tabulate here, and will describe in several diffferent use cases. While every option is available in each type of processing, I outine several example cases below.
+There are a number of options that can be passed to the code which we tabulate here, and will describe in several different use cases. While every option is available in each type of processing, I outline several example cases below.
 
-It is important to note that many of these optioons come into play when building a basis set that will go into doing sky subtraction calculation.
+It is important to note that many of these options come into play when building a basis set that will go into doing sky subtraction calculation.
 
 ========  ========  ==============================================================================
 Keyword   Default   Function
 ========  ========  ==============================================================================
-clean     True      Interpolates over NaN values in the datacube to allow processing on all 
+clean     True      Interpolates over NaN values in the datacube to allow processing on all
                     spectra for the input SVD. The NaN values are replaced in the final datacube.
-		    Any spaxel that includes a NaN pixel will be rejected from the SVD 
-		    calculation, so this step is used to maximixe the number of contributors, but
-		    the NaNs remain in the final datacube.
+                    Any spaxel that includes a NaN pixel will be rejected from the SVD
+                    calculation, so this step is used to maximize the number of contributors, but
+                    the NaNs remain in the final datacube.
 
-zlevel    'median'  This option is used to define the method for determining the zeroth order 
-                    subtraction of the sky. This is used to remove any systematic sky feature 
-		    that exists over the whole field. Options are 'median', 'sigclip', and 'none'.
-		    The 'none' option should only be applied when ZAP is applied to enhance a 
-		    previous sky subtraction.
+zlevel    'median'  This option is used to define the method for determining the zeroth order
+                    subtraction of the sky. This is used to remove any systematic sky feature
+                    that exists over the whole field. Options are 'median', 'sigclip', and 'none'.
+                    The 'none' option should only be applied when ZAP is applied to enhance a
+                    previous sky subtraction.
 
-q         0         Quartile selection, this option will remove the top n quartiles of the 
-                    dataset to calculate of the zlsky. This option works well set to 1 with the 
-		    'sigclip' option.
+q         0         Quartile selection, this option will remove the top n quartiles of the
+                    dataset to calculate of the zlsky. This option works well set to 1 with the
+                    'sigclip' option.
 
-cftype    'median'  The type of filtering that is applied to remove the continuum.  'weight' 
+cftype    'median'  The type of filtering that is applied to remove the continuum.  'weight'
                     refers to the weighted median, which uses the calculated zlevel sky as the
-		    weight. 'median' refers to a rolling median filter with a nested small 
-		    uniform filter. The 'weight' option provides a better result, but is much
-		    slower (an additional 10 minutes on a single exposure) and should only be 
-		    run in the complete sky subtraction case.
+                    weight. 'median' refers to a rolling median filter with a nested small
+                    uniform filter. The 'weight' option provides a better result, but is much
+                    slower (an additional 10 minutes on a single exposure) and should only be
+                    run in the complete sky subtraction case.
 
 cfwidth   300       Size of the filterbox used to remove the continuum features in order to
                     sterilize the basis set used to calculate the eigenbasis.
 
 optimize  True      A flag used to call the optimization method. This automatically determines the
-                    number of eigenspectra/eigenvalues to use per segment. 
+                    number of eigenspectra/eigenvalues to use per segment.
 
-nevals    []        Number of eigenspectra/eigenvaules used per spectral segment. If this
-                    is used, the pevals is ignored. Provide either a single value that will be 
-		    used for all of the segments, or a list of 9 values that will be used for 
-		    each of the segments.
+nevals    []        Number of eigenspectra/eigenvalues used per spectral segment. If this
+                    is used, the pevals is ignored. Provide either a single value that will be
+                    used for all of the segments, or a list of 9 values that will be used for
+                    each of the segments.
 
-pevals    []        Percentage of the caclulated eigenspectra/eigenvaules used per spectral
-                    segment. Provide either a single value that will be used for all of the 
-		    segments, or a list of 9 values that will be used for each of the segments.
+pevals    []        Percentage of the calculated eigenspectra/eigenvalues used per spectral
+                    segment. Provide either a single value that will be used for all of the
+                    segments, or a list of 9 values that will be used for each of the segments.
 
-extSVD    ''        An optional parameter that allows the input of a externally calculated 
+extSVD    ''        An optional parameter that allows the input of a externally calculated
                     eigenbasis as well as a zlevel
 
 mask      ''        (only used with the SVDoutput method) A 2D fits image to exclude regions that
@@ -108,9 +108,9 @@ There are two approaches to this case, which both use an algorithm to limit the 
 
   zap.process('INPUT.fits', 'OUTPUT.fits', q=1, zlevel='sigclip')
 
-This option removes the top quatile per spectral channel of the data before determining the contribution to the zlevel. This option used along with the sigma clipping can identify the background sky level, without including signal from the objects. This is the best option for a field that has many objects.
+This option removes the top quartile per spectral channel of the data before determining the contribution to the zlevel. This option used along with the sigma clipping can identify the background sky level, without including signal from the objects. This is the best option for a field that has many objects.
 
-The second option is to use a mask to generate the intial SVD calculation, as described below.
+The second option is to use a mask to generate the initial SVD calculation, as described below.
 
 
 Pre-determined zlevel and eigenspectra
@@ -148,9 +148,9 @@ This function replaces the nan valued pixels with an average of the adjacent val
 
 "rejectratio" defines a cutoff for the ratio of pixels in a spaxel before the spaxel is avoided completely.
 
-"boxsz" defines the number of pixels that defines the box around the offending nan pixel. With boxsz set to 1 the function looks for the nearest 26 neighbors which is a 3x3 box. 
+"boxsz" defines the number of pixels that defines the box around the offending nan pixel. With boxsz set to 1 the function looks for the nearest 26 neighbors which is a 3x3 box.
 
-This step is only an intermediary step in the full ZAP process as a way to create a clean input into the SVD calculation, but this function allows you to run it as a standalone step. 
+This step is only an intermediary step in the full ZAP process as a way to create a clean input into the SVD calculation, but this function allows you to run it as a standalone step.
 
 **continuum removal**
 
@@ -176,29 +176,29 @@ process a final data cube in a python class named zclass. You can elect to inves
 
   from mpdaf_user import zap
   from matplotlib import pyplot as plt
-  
+
   zobj = zap.interactive('INPUT.fits', pevals=1) #choose 1% of modes per segment
-  
+
   #investigate the dataproduct with pyplot
   plt.figure()
-  
-  #plot a spectrum extracted from the original cube
-  plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), 'b', alpha=0.3)
-  
-  #plot a spectrum of the cleaned ZAP dataproduct
-  plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2)), 'g')
-  
-  #choose just the major mode
-  zobj.reprocess(nevals=1) 
 
   #plot a spectrum extracted from the original cube
   plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), 'b', alpha=0.3)
-  
+
+  #plot a spectrum of the cleaned ZAP dataproduct
+  plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2)), 'g')
+
+  #choose just the major mode
+  zobj.reprocess(nevals=1)
+
+  #plot a spectrum extracted from the original cube
+  plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), 'b', alpha=0.3)
+
   #plot a spectrum of the cleaned ZAP dataproduct
   plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'g')
 
   #choose some number of modes by hand
-  zobj.reprocess(nevals=[2,5,2,4,6,7,9,8,5]) 
+  zobj.reprocess(nevals=[2,5,2,4,6,7,9,8,5])
 
   #plot a spectrum
   plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'k')
@@ -207,7 +207,7 @@ process a final data cube in a python class named zclass. You can elect to inves
   zobj.optimize()
 
   #compare to the previous versions
-  plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'r')  
+  plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'r')
 
   #identify a pixel in the dispersion axis that shows a residual feature in the original
   plt.figure()
@@ -279,9 +279,9 @@ The method of normalization has a strong effect on any SVD calculation. In this 
 
 Singular Value Decomposition
 ++++++++++++++++++++++++++++
-Calulate the eigenspectra and eigenvalues that characterize the residual emission line features.
+Calculate the eigenspectra and eigenvalues that characterize the residual emission line features.
 
-Using the previous steps, we have produced a set of spectra that are prepared for the Singular Value Decomposition, which cacluated the eigenspectra and the eigenvalues that create the entire set of input spectra. To use these eigenspectra effectively, the eigenmodes must be chosen to identify only the contributions by the sky residuals.
+Using the previous steps, we have produced a set of spectra that are prepared for the Singular Value Decomposition, which calculated the eigenspectra and the eigenvalues that create the entire set of input spectra. To use these eigenspectra effectively, the eigenmodes must be chosen to identify only the contributions by the sky residuals.
 
 Optimization
 ++++++++++++
