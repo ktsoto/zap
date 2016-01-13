@@ -59,6 +59,9 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
         print 'weighted median requires a zlevel calculation'
         return
 
+    if optimize != 'none' or optimize != 'enhanced':
+        optimize = 'normal'
+
     zobj = zclass(musecubefits)
 
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
@@ -398,7 +401,7 @@ class zclass:
 
         # choose some fraction of eigenspectra or some finite number of
         # eigenspectra
-        if (optimize == 'enhanced' or optimize == 'normal') or (nevals == [] and pevals == []):
+        if optimize != 'none' or (nevals == [] and pevals == []):
             self.optimize()
             self.chooseevals(nevals=self.nevals)
         else:
