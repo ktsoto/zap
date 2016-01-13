@@ -32,7 +32,7 @@ from time import time
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zlevel='median',
             q=0, cftype='weight', cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False,
-            extSVD='', skycubefits='', rec_settings='', enhanced_optimize=False):
+            extSVD='', skycubefits='', rec_settings='', enhanced_optimize=False, interactive=False):
     """
     Performs the entire ZAP sky subtraction algorithm on an input fits file
     and writes the product to an output fits file.
@@ -85,56 +85,15 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
               pevals=pevals, nevals=nevals, optimize=optimize, silent=silent,
               enhanced_optimize=enhanced_optimize, extSVD=extSVD)
 
-    if skycubefits != '':
-        zobj.writeskycube(skycubefits=skycubefits)
+    if not interactive:
 
-    zobj.mergefits(outcubefits)
+        if skycubefits != '':
+            zobj.writeskycube(skycubefits=skycubefits)
 
+        zobj.mergefits(outcubefits)
 
-def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cftype='weight',
-                pevals=[], nevals=[], optimize=False, silent=False, extSVD='', rec_settings='',
-                enhanced_optimize=False):
-    """
-    Performs the entire ZAP sky subtraction algorithm on an input datacube and
-    header. A class containing all of the necessary data to examine the result
-    and modify as desired.
-
-    """
-
-    # Check for consistency between weighted median and zlevel keywords
-    if cftype == 'weight' and zlevel == 'none':
-        print 'weighted median requires a zlevel calculation'
-        return
-
-    # create an instance
-    zobj = zclass(musecubefits)
-
-    if rec_settings != '':
-        if rec_settings == 'filled' or rec_settings == 'extSVD':
-            if extSVD == '':
-                print 'Filled Field case requires external SVD'
-                return
-            enhanced_optimize = True
-            cfwidth = 10
-            cftype = 'weight'
-            print 'Using recommended settings for filled field case:'
-            print "cfwidth = 10, cftype = 'weight', enhanced_optimization=True"
-        if rec_settings == 'sparse':
-            print 'Using recommended settings for sparse field case:'
-            print "cfwidth = 15, cftype = 'weight', enhanced_optimization=True"
-            enhanced_optimize = True
-            cfwidth = 300
-            cftype = 'weight'
-
-    if enhanced_optimize:
-        optimize = True
-
-    zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
-              pevals=pevals, nevals=nevals, optimize=optimize,
-              enhanced_optimize=enhanced_optimize,
-              silent=silent, extSVD=extSVD)
-
-    return zobj
+    else:
+        return zobj
 
 
 def SVDoutput(musecubefitslst, svdfn='ZAP_SVD.fits', clean=True,
