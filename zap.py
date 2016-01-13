@@ -96,7 +96,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
         return zobj
 
 
-def SVDoutput(musecubefitslst, svdfn='ZAP_SVD.fits', clean=True,
+def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
               zlevel='median', q=0, cftype='weight', cfwidth=300, mask=''):
     """
     Performs the SVD decomposition of the datacube for use in a different
@@ -113,54 +113,22 @@ def SVDoutput(musecubefitslst, svdfn='ZAP_SVD.fits', clean=True,
         print 'weighted median requires a zlevel calculation'
         return
 
-    if type(musecubefitslst) == list:
-        print 'Combining multiple inputs'
+    zobj = zclass(musecubefitslst)
+    
+    # clean up the nan values
+    if clean:
+        zobj._nanclean()
 
-        for i in range(len(musecubefitslst)):
+    # if mask is supplied, apply it
+    if mask != '':
+        zobj._applymask(mask)
 
-            zobj = zclass(musecubefitslst[i])
-            # clean up the nan values
-            if clean != False:
-                zobj._nanclean()
+    # Extract the spectra that we will be working with
+    zobj._extract()
 
-            # if mask is supplied, apply it
-            if mask != '':
-                zobj._applymask(mask[i])
-
-                # Extract the spectra that we will be working with
-            zobj._extract()
-
-            # remove the median along the spectral axis
-            if zlevel.lower() != 'none':
-                zobj._zlevel(calctype=zlevel, q=q)
-
-            if i == 0:
-                combstack = zobj.stack
-                zlstack = [zobj.zlsky]
-            else:
-                combstack = np.append(combstack, zobj.stack, axis=1)
-                zlstack = np.append(zlstack, [zobj.zlsky], axis=0)
-        zl = zlstack.mean(axis=0)
-
-        zobj.zlsky = zl
-        zobj.stack = combstack
-    else:
-
-        zobj = zclass(musecubefitslst)
-        # clean up the nan values
-        if clean != False:
-            zobj._nanclean()
-
-        # if mask is supplied, apply it
-        if mask != '':
-            zobj._applymask(mask)
-
-        # Extract the spectra that we will be working with
-        zobj._extract()
-
-        # remove the median along the spectral axis
-        if zlevel.lower() != 'none':
-            zobj._zlevel(calctype=zlevel, q=q)
+    # remove the median along the spectral axis
+    if zlevel.lower() != 'none':
+        zobj._zlevel(calctype=zlevel, q=q)
 
     # remove the continuum level - this is multiprocessed to speed it up
     print 'Continuum Filtering'
