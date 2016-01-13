@@ -113,8 +113,8 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
         print 'weighted median requires a zlevel calculation'
         return
 
-    zobj = zclass(musecubefitslst)
-    
+    zobj = zclass(musecubefits)
+
     # clean up the nan values
     if clean:
         zobj._nanclean()
