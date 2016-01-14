@@ -31,7 +31,7 @@ from time import time
 
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zlevel='median',
-            q=0, cftype='weight', cfwidth=100, pevals=[], nevals=[], optimize='normal', silent=False,
+            q=0, cftype='weight', cfwidth=100, pevals=[], nevals=[], optimizeType='normal', silent=False,
             extSVD='', skycubefits='', interactive=False):
     """
     Performs the entire ZAP sky subtraction algorithm on an input fits file
@@ -59,13 +59,13 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
         print 'weighted median requires a zlevel calculation'
         return
 
-    if optimize != 'none' or optimize != 'enhanced':
-        optimize = 'normal'
+    if optimizeType != 'none' or optimizeType != 'enhanced':
+        optimizeType = 'normal'
 
     zobj = zclass(musecubefits)
 
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
-              pevals=pevals, nevals=nevals, optimize=optimize, silent=silent,
+              pevals=pevals, nevals=nevals, optimizeType=optimizeType, silent=silent,
               extSVD=extSVD)
 
     if not interactive:
@@ -358,7 +358,7 @@ class zclass:
 
     @timeit
     def _run(self, clean=True, zlevel='median', q=0, cftype='weight',
-             cfwidth=100, pevals=[], nevals=[], optimize='normal', silent=False,
+             cfwidth=100, pevals=[], nevals=[], optimizeType='normal', silent=False,
              extSVD=''):
         """
         Perform all zclass to ZAP a datacube, including NaN re/masking,
@@ -371,7 +371,7 @@ class zclass:
 
         """
 
-        self.optimize = optimize
+        self.optimizeType = optimizeType
 
         print 'Preparing Data for eigenspectra calculation'
         # clean up the nan values
@@ -401,7 +401,7 @@ class zclass:
 
         # choose some fraction of eigenspectra or some finite number of
         # eigenspectra
-        if optimize != 'none' or (nevals == [] and pevals == []):
+        if optimizeType != 'none' or (nevals == [] and pevals == []):
             self.optimize()
             self.chooseevals(nevals=self.nevals)
         else:
@@ -744,7 +744,7 @@ class zclass:
             deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
             noptpix = self.varlist[i].size
 
-            if self.optimize == 'normal':
+            if self.optimizeType == 'normal':
                 # statistics on the derivatives
                 mn1 = deriv[.5 * (noptpix - 2):].mean()
                 std1 = deriv[.5 * (noptpix - 2):].std() * 2
@@ -756,7 +756,7 @@ class zclass:
                 cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2))  # pad by 2 for 2nd
                 cross = np.logical_or(cross1, cross2)
                 
-            if self.optimize == 'enhanced':
+            if self.optimizeType == 'enhanced':
                 print 'Enhanced Optimization'
                 # statistics on the derivatives
                 mn1 = deriv[.75 * (noptpix - 2):].mean()
@@ -925,7 +925,7 @@ class zclass:
         deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
         noptpix = self.varlist[i].size
 
-        if self.optimize == 'normal':
+        if self.optimizeType == 'normal':
             # statistics on the derivatives
             mn1 = deriv[.5 * (noptpix - 2):].mean()
             std1 = deriv[.5 * (noptpix - 2):].std() * 2
