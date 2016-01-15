@@ -803,27 +803,6 @@ class zclass:
         self.especeval = especeval
         hdu.close()
 
-    def _recalc_evals(self, extSVD):
-        logger.info('Recalculating eigenvalues for strong line object removal')
-
-        # normalize the variance in the segments
-        self.variancearray = np.zeros((nseg, self.stack.shape[1]))
-
-        for i in range(nseg):
-            self.variancearray[i, :] = np.var(self.normstack[
-                self.pranges[i, 0]:self.pranges[i, 1], :], axis=0)
-            self.normstack[self.pranges[i, 0]:self.pranges[i, 1], :] = self.normstack[
-                self.pranges[i, 0]:self.pranges[i, 1], :] / self.variancearray[i, :]
-
-        especeval = []
-        for i in range(nseg):
-            #eigenspectra = svdhdu[i+1].data
-            ns = self.normstack[self.pranges[i][0]:self.pranges[i][1]]
-            evals = np.transpose(np.transpose(ns).dot(especeval[i][0]))
-            especeval.append([eigenspectra, evals])
-
-        self.especeval = especeval
-
     def _applymask(self, mask):
         """Apply a mask to the input data in order to provide a cleaner basis
         set"""
