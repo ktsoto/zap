@@ -31,8 +31,8 @@ from time import time
 
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zlevel='median',
-            q=0, cftype='weight', cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False,
-            extSVD='', skycubefits='', rec_settings='', enhanced_optimize=False):
+            q=0, cftype='weight', cfwidth=100, pevals=[], nevals=[], optimizeType='normal', silent=False,
+            extSVD='', skycubefits='', interactive=False):
     """
     Performs the entire ZAP sky subtraction algorithm on an input fits file
     and writes the product to an output fits file.
@@ -59,85 +59,27 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
         print 'weighted median requires a zlevel calculation'
         return
 
+    if optimizeType != 'none' or optimizeType != 'enhanced':
+        optimizeType = 'normal'
+
     zobj = zclass(musecubefits)
 
-    if rec_settings != '':
-        if rec_settings == 'filled' or rec_settings == 'extSVD':
-            if extSVD == '':
-                print 'Filled Field case requires external SVD'
-                return
-            enhanced_optimize = True
-            cfwidth = 10
-            cftype = 'weight'
-            print 'Using recommended settings for filled field case:'
-            print "cfwidth = 10, cftype = 'weight', enhanced_optimize=True"
-        if rec_settings == 'sparse':
-            print 'Using recommended settings for sparse field case:'
-            print "cfwidth = 300, cftype = 'weight', enhanced_optimize=True"
-            enhanced_optimize = True
-            cfwidth = 300
-            cftype = 'weight'
-
-    if enhanced_optimize:
-        optimize = True
-
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
-              pevals=pevals, nevals=nevals, optimize=optimize, silent=silent,
-              enhanced_optimize=enhanced_optimize, extSVD=extSVD)
+              pevals=pevals, nevals=nevals, optimizeType=optimizeType, silent=silent,
+              extSVD=extSVD)
 
-    if skycubefits != '':
-        zobj.writeskycube(skycubefits=skycubefits)
+    if not interactive:
 
-    zobj.mergefits(outcubefits)
+        if skycubefits != '':
+            zobj.writeskycube(skycubefits=skycubefits)
 
+        zobj.mergefits(outcubefits)
 
-def interactive(musecubefits, clean=True, zlevel='median', q=0, cfwidth=300, cftype='weight',
-                pevals=[], nevals=[], optimize=False, silent=False, extSVD='', rec_settings='',
-                enhanced_optimize=False):
-    """
-    Performs the entire ZAP sky subtraction algorithm on an input datacube and
-    header. A class containing all of the necessary data to examine the result
-    and modify as desired.
-
-    """
-
-    # Check for consistency between weighted median and zlevel keywords
-    if cftype == 'weight' and zlevel == 'none':
-        print 'weighted median requires a zlevel calculation'
-        return
-
-    # create an instance
-    zobj = zclass(musecubefits)
-
-    if rec_settings != '':
-        if rec_settings == 'filled' or rec_settings == 'extSVD':
-            if extSVD == '':
-                print 'Filled Field case requires external SVD'
-                return
-            enhanced_optimize = True
-            cfwidth = 10
-            cftype = 'weight'
-            print 'Using recommended settings for filled field case:'
-            print "cfwidth = 10, cftype = 'weight', enhanced_optimization=True"
-        if rec_settings == 'sparse':
-            print 'Using recommended settings for sparse field case:'
-            print "cfwidth = 15, cftype = 'weight', enhanced_optimization=True"
-            enhanced_optimize = True
-            cfwidth = 300
-            cftype = 'weight'
-
-    if enhanced_optimize:
-        optimize = True
-
-    zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
-              pevals=pevals, nevals=nevals, optimize=optimize,
-              enhanced_optimize=enhanced_optimize,
-              silent=silent, extSVD=extSVD)
-
-    return zobj
+    else:
+        return zobj
 
 
-def SVDoutput(musecubefitslst, svdfn='ZAP_SVD.fits', clean=True,
+def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
               zlevel='median', q=0, cftype='weight', cfwidth=300, mask=''):
     """
     Performs the SVD decomposition of the datacube for use in a different
@@ -154,54 +96,22 @@ def SVDoutput(musecubefitslst, svdfn='ZAP_SVD.fits', clean=True,
         print 'weighted median requires a zlevel calculation'
         return
 
-    if type(musecubefitslst) == list:
-        print 'Combining multiple inputs'
+    zobj = zclass(musecubefits)
 
-        for i in range(len(musecubefitslst)):
+    # clean up the nan values
+    if clean:
+        zobj._nanclean()
 
-            zobj = zclass(musecubefitslst[i])
-            # clean up the nan values
-            if clean != False:
-                zobj._nanclean()
+    # if mask is supplied, apply it
+    if mask != '':
+        zobj._applymask(mask)
 
-            # if mask is supplied, apply it
-            if mask != '':
-                zobj._applymask(mask[i])
+    # Extract the spectra that we will be working with
+    zobj._extract()
 
-                # Extract the spectra that we will be working with
-            zobj._extract()
-
-            # remove the median along the spectral axis
-            if zlevel.lower() != 'none':
-                zobj._zlevel(calctype=zlevel, q=q)
-
-            if i == 0:
-                combstack = zobj.stack
-                zlstack = [zobj.zlsky]
-            else:
-                combstack = np.append(combstack, zobj.stack, axis=1)
-                zlstack = np.append(zlstack, [zobj.zlsky], axis=0)
-        zl = zlstack.mean(axis=0)
-
-        zobj.zlsky = zl
-        zobj.stack = combstack
-    else:
-
-        zobj = zclass(musecubefitslst)
-        # clean up the nan values
-        if clean != False:
-            zobj._nanclean()
-
-        # if mask is supplied, apply it
-        if mask != '':
-            zobj._applymask(mask)
-
-        # Extract the spectra that we will be working with
-        zobj._extract()
-
-        # remove the median along the spectral axis
-        if zlevel.lower() != 'none':
-            zobj._zlevel(calctype=zlevel, q=q)
+    # remove the median along the spectral axis
+    if zlevel.lower() != 'none':
+        zobj._zlevel(calctype=zlevel, q=q)
 
     # remove the continuum level - this is multiprocessed to speed it up
     print 'Continuum Filtering'
@@ -448,8 +358,8 @@ class zclass:
 
     @timeit
     def _run(self, clean=True, zlevel='median', q=0, cftype='weight',
-             cfwidth=300, pevals=[], nevals=[], optimize=False, silent=False,
-             extSVD='', enhanced_optimize=False):
+             cfwidth=100, pevals=[], nevals=[], optimizeType='normal', silent=False,
+             extSVD=''):
         """
         Perform all zclass to ZAP a datacube, including NaN re/masking,
         deconstruction into "stacks", zerolevel subraction, continuum removal,
@@ -461,7 +371,7 @@ class zclass:
 
         """
 
-        self.enhanced_optimize = enhanced_optimize
+        self.optimizeType = optimizeType
 
         print 'Preparing Data for eigenspectra calculation'
         # clean up the nan values
@@ -486,18 +396,12 @@ class zclass:
         # do the multiprocessed SVD calculation
         if extSVD == '':
             self._msvd()
-            # remove strong sources and use the previous SVD to help isolate
-            # sky components
-            if enhanced_optimize:
-                print('Applying Continuum Filter for object avoidance in '
-                      'eigenvalues')
-                self._continuumfilter(cfwidth=10, cftype='weight')
         else:
             self._externalSVD(extSVD)
 
         # choose some fraction of eigenspectra or some finite number of
         # eigenspectra
-        if optimize or (nevals == [] and pevals == []):
+        if optimizeType != 'none' or (nevals == [] and pevals == []):
             self.optimize()
             self.chooseevals(nevals=self.nevals)
         else:
@@ -621,7 +525,7 @@ class zclass:
 
         self.run_zlevel = calctype
 
-    def _continuumfilter(self, cfwidth=300, cftype='weight', silent=False):
+    def _continuumfilter(self, cfwidth=100, cftype='weight', silent=False):
         """
         A multiprocessed implementation of the continuum removal. This process
         distributes the data to many processes that then reassemble the data.
@@ -840,7 +744,7 @@ class zclass:
             deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
             noptpix = self.varlist[i].size
 
-            if not self.enhanced_optimize:
+            if self.optimizeType == 'normal':
                 # statistics on the derivatives
                 mn1 = deriv[.5 * (noptpix - 2):].mean()
                 std1 = deriv[.5 * (noptpix - 2):].std() * 2
@@ -851,7 +755,8 @@ class zclass:
                 cross1 = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
                 cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2))  # pad by 2 for 2nd
                 cross = np.logical_or(cross1, cross2)
-            else:
+                
+            if self.optimizeType == 'enhanced':
                 print 'Enhanced Optimization'
                 # statistics on the derivatives
                 mn1 = deriv[.75 * (noptpix - 2):].mean()
@@ -859,8 +764,6 @@ class zclass:
                 mn2 = deriv2[.75 * (noptpix - 2):].mean()
                 std2 = deriv2[.75 * (noptpix - 2):].std()
 
-                # cross = np.append([False, False],
-                #                   np.abs(smderiv2) <= (mn2 + std2)) #pad by 2 for 2nd
                 cross = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
 
             self.nevals[i] = np.where(cross)[0][0]
@@ -1022,7 +925,7 @@ class zclass:
         deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
         noptpix = self.varlist[i].size
 
-        if not self.enhanced_optimize:
+        if self.optimizeType == 'normal':
             # statistics on the derivatives
             mn1 = deriv[.5 * (noptpix - 2):].mean()
             std1 = deriv[.5 * (noptpix - 2):].std() * 2
