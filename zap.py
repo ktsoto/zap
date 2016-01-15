@@ -27,6 +27,15 @@ from scipy import ndimage as ndi
 from scipy.stats import sigmaclip
 from time import time
 
+PY2 = sys.version_info[0] == 2
+
+if not PY2:
+    text_type = str
+    string_types = (str,)
+else:
+    text_type = unicode
+    string_types = (str, unicode)
+
 logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.DEBUG,
                     stream=sys.stdout)
 logger = logging.getLogger(__name__)
@@ -45,32 +54,25 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
     and writes the product to an output fits file.
 
     """
-    if type(musecubefits) == list:
-        logger.error('The process method only accepts single datacubes.')
-        return
+    if not isinstance(musecubefits, string_types):
+        raise TypeError('The process method only accepts a single datacube '
+                        'filename.')
 
     # make sure it has the right extension
     outcubefits = outcubefits.split('.fits')[0] + '.fits'
 
-    # check if outcubefits exists before beginning
-    if os.path.exists(outcubefits):
-        logger.error('Output filename "%s" exists', outcubefits)
-        return
-
-    if os.path.exists(skycubefits):
-        logger.error('Output filename "%s" exists', skycubefits)
-        return
+    # check if outcubefits/skycubefits exists before beginning
+    check_file_exists(outcubefits)
+    check_file_exists(skycubefits)
 
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
-        logger.error('Weighted median requires a zlevel calculation')
-        return
+        raise ValueError('Weighted median requires a zlevel calculation')
 
-    if optimizeType != 'none' or optimizeType != 'enhanced':
-        optimizeType = 'normal'
+    if optimizeType not in ('none', 'normal', 'enhanced'):
+        raise ValueError('Invalid value for optimizeType')
 
     zobj = zclass(musecubefits)
-
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
               pevals=pevals, nevals=nevals, optimizeType=optimizeType,
               extSVD=extSVD)
@@ -92,14 +94,11 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
 
     """
 
-    if os.path.exists(svdfn):
-        logger.error('Output filename exists')
-        return
+    check_file_exists(svdfn)
 
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
-        logger.error('Weighted median requires a zlevel calculation')
-        return
+        raise ValueError('Weighted median requires a zlevel calculation')
 
     zobj = zclass(musecubefits)
 
@@ -141,24 +140,19 @@ def contsubfits(musecubefits, contsubfn='CONTSUB_CUBE.fits', cfwidth=300):
     added to class
     contarray - the removed continuua
     normstack - "normalized" version of the stack with the continuua removed
+
     """
-
-    if os.path.exists(contsubfn):
-        logger.error('output filename "%s" exists', contsubfn)
-        return
-
+    check_file_exists(contsubfn)
     hdu = pyfits.open(musecubefits)
-    stack = hdu[1].data.reshape(hdu[1].data.shape[0],
-                                (hdu[1].data.shape[1] * hdu[1].data.shape[2]))
-
+    data = hdu[1].data
+    stack = data.reshape(data.shape[0], (data.shape[1] * data.shape[2]))
     contarray = _cfmedian(stack, cfwidth=cfwidth)
 
     # remove continuum features
-    hdu[1].data = (stack - contarray).reshape(hdu[1].data.shape[0],
-                                              hdu[1].data.shape[1],
-                                              hdu[1].data.shape[2])
-
+    stack -= contarray
+    hdu[1].data = stack.reshape(data.shape[0], data.shape[1], data.shape[2])
     hdu.writeto(contsubfn)
+    hdu.close()
 
 
 def nancleanfits(musecubefits, outfn='NANCLEAN_CUBE.fits', rejectratio=0.25,
@@ -168,19 +162,17 @@ def nancleanfits(musecubefits, outfn='NANCLEAN_CUBE.fits', rejectratio=0.25,
     interpolation of the nearest neighbors in the data cube. The positions in
     the cube are retained in nancube for later remasking.
     """
-    if os.path.exists(outfn):
-        logger.error('output filename "%s" exists', outfn)
-        return
-
+    check_file_exists(outfn)
     hdu = pyfits.open(musecubefits)
     cleancube = _nanclean(hdu[1].data, rejectratio=rejectratio, boxsz=boxsz)
     hdu[1].data = cleancube[0]
     hdu.writeto(outfn)
+    hdu.close()
 
 
 def check_file_exists(filename):
     if filename is not None and os.path.exists(filename):
-        raise Exception('File "{0}" exists'.format(filename))
+        raise IOError('Output file "{0}" exists'.format(filename))
 
 
 def timeit(func):
@@ -451,13 +443,11 @@ class zclass:
         self.stack = self.cube[:, self.y, self.x]
 
     def _externalzlevel(self, extSVD):
-        svdhdu = pyfits.open(extSVD)
-        # remove the same zero level
+        """Remove the zero level from the extSVD file."""
         logger.info('Using external zlevel')
-        self.zlsky = svdhdu[0].data
+        self.zlsky = pyfits.getdata(extSVD, 0)
         self.stack -= self.zlsky[:, np.newaxis]
         self.run_zlevel = 'extSVD'
-        svdhdu.close()
 
     @timeit
     def _zlevel(self, calctype='median', q=0):
@@ -790,9 +780,8 @@ class zclass:
         return contcube
 
     def _externalSVD(self, extSVD):
-
         logger.info('Calculating eigenvalues for input eigenspectra')
-        svdhdu = pyfits.open(extSVD)
+        hdu = pyfits.open(extSVD)
         nseg = len(self.pranges)
 
         # normalize the variance in the segments
@@ -806,15 +795,15 @@ class zclass:
 
         especeval = []
         for i in range(nseg):
-            eigenspectra = svdhdu[i + 1].data
+            eigenspectra = hdu[i + 1].data
             ns = self.normstack[self.pranges[i][0]:self.pranges[i][1]]
             evals = np.transpose(np.transpose(ns).dot(eigenspectra))
             especeval.append([eigenspectra, evals])
 
         self.especeval = especeval
+        hdu.close()
 
     def _recalc_evals(self, extSVD):
-
         logger.info('Recalculating eigenvalues for strong line object removal')
 
         # normalize the variance in the segments
@@ -840,9 +829,10 @@ class zclass:
         set"""
         logger.info('Applying Mask for SVD Calculation file %s', mask)
         # mask is >1 for objects, 0 for sky so that people can use sextractor
-        hmsk = pyfits.open(mask)
-        bmask = hmsk[1].data.astype(bool)
+        hdu = pyfits.open(mask)
+        bmask = hdu[1].data.astype(bool)
         self.cube[:, bmask] = np.nan
+        hdu.close()
 
     ###########################################################################
     ##################################### Output Functions ####################
@@ -857,14 +847,9 @@ class zclass:
                                self.cubetrimr), axis=0)
 
     def writecube(self, outcubefits='DATACUBE_ZAP.fits'):
-        """
-        write the processed datacube to an individual fits file.
-        """
+        """Write the processed datacube to an individual fits file."""
 
-        if os.path.exists(outcubefits):
-            logger.error('Output filename exists')
-            return
-
+        check_file_exists(outcubefits)
         # fix up for writing
         outcube = self._cubetowrite()
         outhead = _newheader(self)
@@ -874,14 +859,9 @@ class zclass:
         outhdu.writeto(outcubefits)
 
     def writeskycube(self, skycubefits='SKYCUBE_ZAP.fits'):
-        """
-        write the processed datacube to an individual fits file.
-        """
+        """Write the processed datacube to an individual fits file."""
 
-        if os.path.exists(skycubefits):
-            logger.error('Output filename "%s" exists', skycubefits)
-            return
-
+        check_file_exists(skycubefits)
         # fix up for writing
         outcube = self._skycubetowrite()
         outhead = _newheader(self)
@@ -891,35 +871,24 @@ class zclass:
         outhdu.writeto(skycubefits)
 
     def mergefits(self, outcubefits):
-        """
-        Merge the ZAP cube into the full muse datacube and write
-        """
+        """Merge the ZAP cube into the full muse datacube and write."""
 
-        outcubefits = outcubefits.split('.fits')[0] + '.fits'  # make sure it has the right extension
-
-        if os.path.exists(outcubefits):
-            logger.info('output filename "%s" exists', outcubefits)
-            return
-
+        # make sure it has the right extension
+        outcubefits = outcubefits.split('.fits')[0] + '.fits'
+        check_file_exists(outcubefits)
         hdu = pyfits.open(self.musecubefits)
         hdu[1].header = _newheader(self)
         hdu[1].data = self._cubetowrite()
-
         hdu.writeto(outcubefits)
+        hdu.close()
 
     def writeSVD(self, svdfn='ZAP_SVD.fits'):
+        """Write the SVD to an individual fits file."""
 
-        if os.path.exists(svdfn):
-            logger.info('output filename "%s" exists', svdfn)
-            return
-
-        hdu = pyfits.HDUList()
-
-        hdu.append(pyfits.PrimaryHDU(self.zlsky))
-
+        check_file_exists(svdfn)
+        hdu = pyfits.HDUList([pyfits.PrimaryHDU(self.zlsky)])
         for i in range(len(self.pranges)):
             hdu.append(pyfits.ImageHDU(self.especeval[i][0]))
-
         # write for later use
         hdu.writeto(svdfn)
 
