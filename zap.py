@@ -15,6 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import absolute_import, division, print_function
+
 import logging
 import multiprocessing
 import numpy as np
@@ -804,14 +806,20 @@ class zclass:
         hdu.close()
 
     def _applymask(self, mask):
-        """Apply a mask to the input data in order to provide a cleaner basis
-        set"""
-        logger.info('Applying Mask for SVD Calculation file %s', mask)
-        # mask is >1 for objects, 0 for sky so that people can use sextractor
-        hdu = pyfits.open(mask)
-        bmask = hdu[1].data.astype(bool)
-        self.cube[:, bmask] = np.nan
-        hdu.close()
+        """Apply a mask to the input data to provide a cleaner basis set.
+
+        mask is >1 for objects, 0 for sky so that people can use sextractor.
+        The file is read with `astropy.io.fits.getdata` which first tries to
+        read the primary extension, then the first extension is no data was
+        found before.
+
+        """
+        logger.info('Applying Mask for SVD Calculation from %s', mask)
+        mask = pyfits.getdata(mask).astype(bool)
+        nmasked = np.count_nonzero(mask)
+        logger.info('Masking %d pixels (%d%%)', nmasked,
+                    nmasked / np.prod(mask.shape) * 100)
+        self.cube[:, mask] = np.nan
 
     ###########################################################################
     ##################################### Output Functions ####################
