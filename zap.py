@@ -15,9 +15,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import absolute_import, division, print_function
+
+import logging
 import multiprocessing
 import numpy as np
 import os
+import sys
 
 from astropy.io import fits as pyfits
 from functools import wraps
@@ -25,56 +29,61 @@ from scipy import ndimage as ndi
 from scipy.stats import sigmaclip
 from time import time
 
+PY2 = sys.version_info[0] == 2
+
+if not PY2:
+    text_type = str
+    string_types = (str,)
+else:
+    text_type = unicode
+    string_types = (str, unicode)
+
+logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.DEBUG,
+                    stream=sys.stdout)
+logger = logging.getLogger(__name__)
+
+
 ###############################################################################
 ################################### Top Level Functions #######################
 ###############################################################################
 
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zlevel='median',
-            q=0, cftype='weight', cfwidth=100, pevals=[], nevals=[], optimizeType='normal', silent=False,
+            q=0, cftype='weight', cfwidth=100, pevals=[], nevals=[], optimizeType='normal',
             extSVD='', skycubefits='', interactive=False):
     """
     Performs the entire ZAP sky subtraction algorithm on an input fits file
     and writes the product to an output fits file.
 
     """
-    if type(musecubefits) == list:
-        print 'The process method only accepts single datacubes.'
-        print 'Multiple inputs for sky calculation can be performed with SVDoutput.'
-        return
+    if not isinstance(musecubefits, string_types):
+        raise TypeError('The process method only accepts a single datacube '
+                        'filename.')
 
-    outcubefits = outcubefits.split('.fits')[0] + '.fits'  # make sure it has the right extension
+    # make sure it has the right extension
+    outcubefits = outcubefits.split('.fits')[0] + '.fits'
 
-    # check if outcubefits exists before beginning
-    if os.path.exists(outcubefits):
-        print 'output filename "{0}" exists'.format(outcubefits)
-        return
-
-    if os.path.exists(skycubefits):
-        print 'output filename "{0}" exists'.format(skycubefits)
-        return
+    # check if outcubefits/skycubefits exists before beginning
+    check_file_exists(outcubefits)
+    check_file_exists(skycubefits)
 
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
-        print 'weighted median requires a zlevel calculation'
-        return
+        raise ValueError('Weighted median requires a zlevel calculation')
 
-    if optimizeType != 'none' or optimizeType != 'enhanced':
-        optimizeType = 'normal'
+    if optimizeType not in ('none', 'normal', 'enhanced'):
+        raise ValueError('Invalid value for optimizeType')
 
     zobj = zclass(musecubefits)
-
     zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
-              pevals=pevals, nevals=nevals, optimizeType=optimizeType, silent=silent,
+              pevals=pevals, nevals=nevals, optimizeType=optimizeType,
               extSVD=extSVD)
 
     if not interactive:
-
         if skycubefits != '':
             zobj.writeskycube(skycubefits=skycubefits)
 
         zobj.mergefits(outcubefits)
-
     else:
         return zobj
 
@@ -86,15 +95,12 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
     datacube.
 
     """
-
-    if os.path.exists(svdfn):
-        print 'output filename exists'
-        return
+    logger.info('Processing %s to compute the SVD', musecubefits)
+    check_file_exists(svdfn)
 
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
-        print 'weighted median requires a zlevel calculation'
-        return
+        raise ValueError('Weighted median requires a zlevel calculation')
 
     zobj = zclass(musecubefits)
 
@@ -114,11 +120,9 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
         zobj._zlevel(calctype=zlevel, q=q)
 
     # remove the continuum level - this is multiprocessed to speed it up
-    print 'Continuum Filtering'
     zobj._continuumfilter(cftype=cftype, cfwidth=cfwidth)
 
     # do the multiprocessed SVD calculation
-    print 'Calculating SVD'
     zobj._msvd()
 
     # write to file
@@ -136,47 +140,39 @@ def contsubfits(musecubefits, contsubfn='CONTSUB_CUBE.fits', cfwidth=300):
     added to class
     contarray - the removed continuua
     normstack - "normalized" version of the stack with the continuua removed
+
     """
-
-    if os.path.exists(contsubfn):
-        print 'output filename "{0}" exists'.format(contsubfn)
-        return
-
+    check_file_exists(contsubfn)
     hdu = pyfits.open(musecubefits)
-    stack = hdu[1].data.reshape(hdu[1].data.shape[0],
-                                (hdu[1].data.shape[1] * hdu[1].data.shape[2]))
-
+    data = hdu[1].data
+    stack = data.reshape(data.shape[0], (data.shape[1] * data.shape[2]))
     contarray = _cfmedian(stack, cfwidth=cfwidth)
 
     # remove continuum features
-    hdu[1].data = (stack - contarray).reshape(hdu[1].data.shape[0],
-                                              hdu[1].data.shape[1],
-                                              hdu[1].data.shape[2])
-
+    stack -= contarray
+    hdu[1].data = stack.reshape(data.shape[0], data.shape[1], data.shape[2])
     hdu.writeto(contsubfn)
+    hdu.close()
 
 
 def nancleanfits(musecubefits, outfn='NANCLEAN_CUBE.fits', rejectratio=0.25,
-                 boxsz=1, silent=False):
+                 boxsz=1):
     """
     Detects NaN values in cube and removes them by replacing them with an
     interpolation of the nearest neighbors in the data cube. The positions in
     the cube are retained in nancube for later remasking.
     """
-    if os.path.exists(outfn):
-        print 'output filename "{0}" exists'.format(outfn)
-        return
-
+    check_file_exists(outfn)
     hdu = pyfits.open(musecubefits)
-    cleancube = _nanclean(hdu[1].data, rejectratio=rejectratio, boxsz=boxsz,
-                          silent=silent)
+    cleancube = _nanclean(hdu[1].data, rejectratio=rejectratio, boxsz=boxsz)
     hdu[1].data = cleancube[0]
     hdu.writeto(outfn)
+    hdu.close()
 
 
 def check_file_exists(filename):
     if filename is not None and os.path.exists(filename):
-        raise Exception('File "{0}" exists'.format(filename))
+        raise IOError('Output file "{0}" exists'.format(filename))
 
 
 def timeit(func):
@@ -184,8 +180,7 @@ def timeit(func):
     def wrapped(*args, **kwargs):
         t0 = time()
         res = func(*args, **kwargs)
-        if not kwargs.get('silent', False):
-            print '{} - Time: {:.2f} sec.'.format(func.__name__, time() - t0)
+        logger.info('%s - Time: %.2f sec.', func.__name__, time() - t0)
         return res
     return wrapped
 
@@ -358,7 +353,7 @@ class zclass:
 
     @timeit
     def _run(self, clean=True, zlevel='median', q=0, cftype='weight',
-             cfwidth=100, pevals=[], nevals=[], optimizeType='normal', silent=False,
+             cfwidth=100, pevals=[], nevals=[], optimizeType='normal',
              extSVD=''):
         """
         Perform all zclass to ZAP a datacube, including NaN re/masking,
@@ -370,10 +365,10 @@ class zclass:
         routine progresses.
 
         """
+        logger.info('Running ZAP !')
 
         self.optimizeType = optimizeType
 
-        print 'Preparing Data for eigenspectra calculation'
         # clean up the nan values
         if clean != False:
             self._nanclean()
@@ -390,7 +385,6 @@ class zclass:
             self.zlq = q
 
         # remove the continuum level - this is multiprocessed to speed it up
-        print 'Applying Continuum Filter'
         self._continuumfilter(cfwidth=cfwidth, cftype=cftype)
 
         # do the multiprocessed SVD calculation
@@ -414,21 +408,21 @@ class zclass:
         self.remold()
 
     # Clean up the nan value spaxels
-    def _nanclean(self, silent=False):
+    def _nanclean(self):
         """
         Detects NaN values in cube and removes them by replacing them with an
         interpolation of the nearest neighbors in the data cube. The positions
         in the cube are retained in nancube for later remasking.
         """
         cleancube = _nanclean(self.cube, rejectratio=self._rejectratio,
-                              boxsz=self._boxsz, silent=silent)
+                              boxsz=self._boxsz)
 
         self.run_clean = True
         self.cube = cleancube[0]
         self.nancube = cleancube[1]
 
     @timeit
-    def _extract(self, silent=False):
+    def _extract(self):
         """
         Deconstruct the datacube into a 2d array, since spatial information is
         not required, and the linear algebra routines require 2d arrays.
@@ -439,22 +433,21 @@ class zclass:
         Adds the x and y data of these positions into the zclass
 
         """
-        if silent == False:
-            print 'Extracting to 2D'
-
+        logger.debug('Extracting to 2D')
         # make a map of spaxels with NaNs
         badmap = (np.logical_not(np.isfinite(self.cube))).sum(axis=0)
-        self.y, self.x = np.where(badmap == 0)    # get positions of those with no NaNs
-        self.stack = self.cube[:, self.y, self.x]  # extract those positions into a 2d array
+        # get positions of those with no NaNs
+        self.y, self.x = np.where(badmap == 0)
+        # extract those positions into a 2d array
+        self.stack = self.cube[:, self.y, self.x]
+        logger.debug('%d valid spaxels', len(self.x))
 
     def _externalzlevel(self, extSVD):
-        svdhdu = pyfits.open(extSVD)
-        # remove the same zero level
-        print 'Using external zlevel'
-        self.zlsky = svdhdu[0].data
+        """Remove the zero level from the extSVD file."""
+        logger.info('Using external zlevel')
+        self.zlsky = pyfits.getdata(extSVD, 0)
         self.stack -= self.zlsky[:, np.newaxis]
         self.run_zlevel = 'extSVD'
-        svdhdu.close()
 
     @timeit
     def _zlevel(self, calctype='median', q=0):
@@ -475,7 +468,7 @@ class zclass:
         """
 
         if calctype != 'none':
-            print 'Subtracting Zero Level'
+            logger.info('Subtracting Zero Level')
 
             # choose the included quartiles
             q = int(q)
@@ -483,7 +476,8 @@ class zclass:
                 q = 3
             self.zlq = q
             if q >= 1 and q <= 3:
-                print 'Removing top {0} quartiles from zlevel calculation'.format(self.zlq)
+                logger.info('Removing the top %s quartiles from zlevel i'
+                            'calculation', self.zlq)
                 zlstack = self.stack.copy()
                 zlstack.sort(axis=1)
                 zlstack = zlstack[:, 0:zlstack.shape[1] *
@@ -500,10 +494,10 @@ class zclass:
                                   nseg + 1, dtype=int)
 
             if calctype == 'median':
-                print 'Median zlevel calculation'
+                logger.info('Median zlevel calculation')
                 func = _imedian
             elif calctype == 'sigclip':
-                print 'Iterative Sigma Clipping zlevel calculation'
+                logger.info('Iterative Sigma Clipping zlevel calculation')
                 func = _isigclip
 
             # multiprocess the zlevel calculation, operating per segment
@@ -521,11 +515,11 @@ class zclass:
             self.zlsky = np.hstack(return_dict.values())
             self.stack -= self.zlsky[:, np.newaxis]
         else:
-            print 'Skipping zlevel subtraction'
+            logger.info('Skipping zlevel subtraction')
 
         self.run_zlevel = calctype
 
-    def _continuumfilter(self, cfwidth=100, cftype='weight', silent=False):
+    def _continuumfilter(self, cfwidth=100, cftype='weight'):
         """
         A multiprocessed implementation of the continuum removal. This process
         distributes the data to many processes that then reassemble the data.
@@ -535,12 +529,15 @@ class zclass:
 
         added to class
         contarray - the removed continuua
-        normstack - "normalized" version of the stack with the continuua removed
+        normstack - "normalized" version of the stack with the continuua
+            removed
+
         """
-        self._cfwidth = cfwidth
+        logger.info('Applying Continuum Filter, cfwidth=%d', cfwidth)
         if cftype != 'weight':
             cftype = 'median'
         self._cftype = cftype
+        self._cfwidth = cfwidth
 
         if cftype == 'median':
             self.contarray = _cfmedian(self.stack, cfwidth=self._cfwidth)
@@ -553,7 +550,7 @@ class zclass:
         self.normstack = self.stack - self.contarray
 
     @timeit
-    def _msvd(self, silent=False):
+    def _msvd(self):
         """
         Multiprocessed singular value decomposition.
 
@@ -562,6 +559,7 @@ class zclass:
         to the individual svd methods.
 
         """
+        logger.info('Calculating SVD')
 
         # split the range
         nseg = len(self.pranges)
@@ -575,7 +573,7 @@ class zclass:
                                               axis=0)
             self.normstack[pmin:pmax, :] /= self.variancearray[i, :]
 
-        print 'Beginning SVD on {0} segments'.format(nseg)
+        logger.debug('Beginning SVD on %d segments', nseg)
 
         # for receiving results of processes
         manager = multiprocessing.Manager()
@@ -621,31 +619,35 @@ class zclass:
 
         # deal with no selection
         if len(nevals) == 0 and len(pevals) == 0:
-            print 'number of modes not selected'
+            logger.info('Number of modes not selected')
             nevals = np.array([1])
 
         # deal with an input list
         if len(nevals) > 1:
             if len(nevals) != nranges:
                 nevals = np.array([nevals[0]])
-                print('Chosen eigenspectra array does not correspond to number of segments')
+                logger.info('Chosen eigenspectra array does not correspond to '
+                            'number of segments')
             else:
-                print('Choosing {0} eigenspectra for segments'.format(nevals))
+                logger.info('Choosing %s eigenspectra for segments', nevals)
 
         if len(pevals) > 1:
             if len(pevals) != nranges:
                 pevals = np.array([pevals[0]])
-                print('Chosen eigenspectra array does not correspond to number of segments')
+                logger.info('Chosen eigenspectra array does not correspond to '
+                            'number of segments')
             else:
-                print('Choosing {0}% of eigenspectra for segments'.format(pevals))
+                logger.info('Choosing %s%% of eigenspectra for segments',
+                            pevals)
                 nevals = (pevals * nespec / 100.).round().astype(int)
 
         # deal with single value entries
         if len(pevals) == 1:
-            print('Choosing {0}% of eigenspectra for all segments'.format(pevals))
+            logger.info('Choosing %s%% of eigenspectra for all segments',
+                        pevals)
             nevals = (pevals * nespec / 100.).round().astype(int)
         elif len(nevals) == 1:
-            print('Choosing {0} eigenspectra for all segments'.format(nevals))
+            logger.info('Choosing %s eigenspectra for all segments', nevals)
             nevals = np.zeros(nranges, dtype=int) + nevals
 
         # take subset of the eigenspectra and put them in a list
@@ -665,7 +667,7 @@ class zclass:
         eigenvalues
         """
 
-        print 'Reconstructing Sky Residuals'
+        logger.info('Reconstructing Sky Residuals')
         nseg = len(self.especeval)
 
         rec = [(eig[:, :, np.newaxis] * ev[np.newaxis, :, :]).sum(axis=1)
@@ -682,7 +684,7 @@ class zclass:
         Subtracts the reconstructed residuals and places the cleaned spectra
         into the duplicated datacube.
         """
-        print 'Applying correction and reshaping data product'
+        logger.info('Applying correction and reshaping data product')
         self.cleancube = self.cube.copy()
         self.cleancube[:, self.y, self.x] = self.stack - self.recon
         if self.run_clean:
@@ -712,7 +714,7 @@ class zclass:
         removal of astronomical features rather than emission line residuals.
 
         """
-        print 'Optimizing'
+        logger.info('Optimizing')
 
         nseg = len(self.especeval)
         normstack = self.stack - self.contarray
@@ -744,7 +746,7 @@ class zclass:
             deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
             noptpix = self.varlist[i].size
 
-            if self.optimizeType == 'normal':
+            if self.optimizeType != 'enhanced':
                 # statistics on the derivatives
                 mn1 = deriv[.5 * (noptpix - 2):].mean()
                 std1 = deriv[.5 * (noptpix - 2):].std() * 2
@@ -755,15 +757,13 @@ class zclass:
                 cross1 = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
                 cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2))  # pad by 2 for 2nd
                 cross = np.logical_or(cross1, cross2)
-                
-            if self.optimizeType == 'enhanced':
-                print 'Enhanced Optimization'
+            else:
+                logger.info('Enhanced Optimization')
                 # statistics on the derivatives
                 mn1 = deriv[.75 * (noptpix - 2):].mean()
                 std1 = deriv[.75 * (noptpix - 2):].std()
                 mn2 = deriv2[.75 * (noptpix - 2):].mean()
                 std2 = deriv2[.75 * (noptpix - 2):].std()
-
                 cross = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
 
             self.nevals[i] = np.where(cross)[0][0]
@@ -782,9 +782,8 @@ class zclass:
         return contcube
 
     def _externalSVD(self, extSVD):
-
-        print 'Calculating eigenvalues for input eigenspectra'
-        svdhdu = pyfits.open(extSVD)
+        logger.info('Calculating eigenvalues for input eigenspectra')
+        hdu = pyfits.open(extSVD)
         nseg = len(self.pranges)
 
         # normalize the variance in the segments
@@ -798,43 +797,29 @@ class zclass:
 
         especeval = []
         for i in range(nseg):
-            eigenspectra = svdhdu[i + 1].data
+            eigenspectra = hdu[i + 1].data
             ns = self.normstack[self.pranges[i][0]:self.pranges[i][1]]
             evals = np.transpose(np.transpose(ns).dot(eigenspectra))
             especeval.append([eigenspectra, evals])
 
         self.especeval = especeval
-
-    def _recalc_evals(self, extSVD):
-
-        print 'Recalculating eigenvalues for strong line object removal'
-
-        # normalize the variance in the segments
-        self.variancearray = np.zeros((nseg, self.stack.shape[1]))
-
-        for i in range(nseg):
-            self.variancearray[i, :] = np.var(self.normstack[
-                self.pranges[i, 0]:self.pranges[i, 1], :], axis=0)
-            self.normstack[self.pranges[i, 0]:self.pranges[i, 1], :] = self.normstack[
-                self.pranges[i, 0]:self.pranges[i, 1], :] / self.variancearray[i, :]
-
-        especeval = []
-        for i in range(nseg):
-            #eigenspectra = svdhdu[i+1].data
-            ns = self.normstack[self.pranges[i][0]:self.pranges[i][1]]
-            evals = np.transpose(np.transpose(ns).dot(especeval[i][0]))
-            especeval.append([eigenspectra, evals])
-
-        self.especeval = especeval
+        hdu.close()
 
     def _applymask(self, mask):
-        """Apply a mask to the input data in order to provide a cleaner basis
-        set"""
-        print 'Applying Mask for SVD Calculation file {0}'.format(mask)
-        # mask is >1 for objects, 0 for sky so that people can use sextractor
-        hmsk = pyfits.open(mask)
-        bmask = hmsk[1].data.astype(bool)
-        self.cube[:, bmask] = np.nan
+        """Apply a mask to the input data to provide a cleaner basis set.
+
+        mask is >1 for objects, 0 for sky so that people can use sextractor.
+        The file is read with `astropy.io.fits.getdata` which first tries to
+        read the primary extension, then the first extension is no data was
+        found before.
+
+        """
+        logger.info('Applying Mask for SVD Calculation from %s', mask)
+        mask = pyfits.getdata(mask).astype(bool)
+        nmasked = np.count_nonzero(mask)
+        logger.info('Masking %d pixels (%d%%)', nmasked,
+                    nmasked / np.prod(mask.shape) * 100)
+        self.cube[:, mask] = np.nan
 
     ###########################################################################
     ##################################### Output Functions ####################
@@ -849,14 +834,9 @@ class zclass:
                                self.cubetrimr), axis=0)
 
     def writecube(self, outcubefits='DATACUBE_ZAP.fits'):
-        """
-        write the processed datacube to an individual fits file.
-        """
+        """Write the processed datacube to an individual fits file."""
 
-        if os.path.exists(outcubefits):
-            print 'output filename exists'
-            return
-
+        check_file_exists(outcubefits)
         # fix up for writing
         outcube = self._cubetowrite()
         outhead = _newheader(self)
@@ -866,14 +846,9 @@ class zclass:
         outhdu.writeto(outcubefits)
 
     def writeskycube(self, skycubefits='SKYCUBE_ZAP.fits'):
-        """
-        write the processed datacube to an individual fits file.
-        """
+        """Write the processed datacube to an individual fits file."""
 
-        if os.path.exists(skycubefits):
-            print 'output filename "{0}" exists'.format(outcubefits)
-            return
-
+        check_file_exists(skycubefits)
         # fix up for writing
         outcube = self._skycubetowrite()
         outhead = _newheader(self)
@@ -883,41 +858,32 @@ class zclass:
         outhdu.writeto(skycubefits)
 
     def mergefits(self, outcubefits):
-        """
-        Merge the ZAP cube into the full muse datacube and write
-        """
+        """Merge the ZAP cube into the full muse datacube and write."""
 
-        outcubefits = outcubefits.split('.fits')[0] + '.fits'  # make sure it has the right extension
-
-        if os.path.exists(outcubefits):
-            print 'output filename "{0}" exists'.format(outcubefits)
-            return
-
+        # make sure it has the right extension
+        outcubefits = outcubefits.split('.fits')[0] + '.fits'
+        check_file_exists(outcubefits)
         hdu = pyfits.open(self.musecubefits)
         hdu[1].header = _newheader(self)
         hdu[1].data = self._cubetowrite()
-
         hdu.writeto(outcubefits)
+        hdu.close()
 
     def writeSVD(self, svdfn='ZAP_SVD.fits'):
+        """Write the SVD to an individual fits file."""
 
-        if os.path.exists(svdfn):
-            print 'output filename "{0}" exists'.format(svdfn)
-            return
-
-        hdu = pyfits.HDUList()
-
-        hdu.append(pyfits.PrimaryHDU(self.zlsky))
-
+        check_file_exists(svdfn)
+        hdu = pyfits.HDUList([pyfits.PrimaryHDU(self.zlsky)])
         for i in range(len(self.pranges)):
             hdu.append(pyfits.ImageHDU(self.especeval[i][0]))
-
         # write for later use
         hdu.writeto(svdfn)
+        logger.info('SVD file saved to %s', svdfn)
 
     def plotvarcurve(self, i=0, ax=None):
         if len(self.varlist) == 0:
-            print 'No varlist found. The optimize method must be run first. \n'
+            logger.warning('No varlist found. The optimize method must be '
+                           'run first.')
             return
 
         # optimize
@@ -1026,7 +992,7 @@ def wmedian(spec, wt, cfwidth=300):
 
 
 @timeit
-def _cfweight(stack, weight, cfwidth=300, silent=False):
+def _cfweight(stack, weight, cfwidth=300):
     """
     A multiprocessed implementation of the continuum removal. This process
     distributes the data to many processes that then reassemble the data. Uses
@@ -1037,10 +1003,9 @@ def _cfweight(stack, weight, cfwidth=300, silent=False):
     added to class
     contarray - the removed continuua
     normstack - "normalized" version of the stack with the continuua removed
-    """
 
-    if silent is False:
-        print 'Continuum Subtracting - weighted median filter method'
+    """
+    logger.debug('Continuum Subtracting - weighted median filter method')
     nmedpieces = multiprocessing.cpu_count()
 
     # define bins
@@ -1081,7 +1046,7 @@ def _icfmedian(i, stack, cfwidth, sprange, return_dict):
 
 
 @timeit
-def _cfmedian(stack, cfwidth=300, silent=False):
+def _cfmedian(stack, cfwidth=300):
     """
     A multiprocessed implementation of the continuum removal. This process
     distributes the data to many processes that then reassemble the data. Uses
@@ -1092,14 +1057,12 @@ def _cfmedian(stack, cfwidth=300, silent=False):
     added to class
     contarray - the removed continuua
     normstack - "normalized" version of the stack with the continuua removed
-    """
 
-    if silent != False:
-        print 'Continuum Subtracting - median filter method'
+    """
+    logger.debug('Continuum Subtracting - median filter method')
     nmedpieces = multiprocessing.cpu_count()
 
     # define bins
-
     edges = np.append(np.floor(
         np.arange(0, stack.shape[1], stack.shape[1] / np.float(nmedpieces))),
         stack.shape[1])
@@ -1128,7 +1091,7 @@ def _cfmedian(stack, cfwidth=300, silent=False):
 
 # ### SVD #####
 
-def _isvd(i, prange, normstack, return_dict, silent=False):
+def _isvd(i, prange, normstack, return_dict):
     """
     Perform single value decomposition and Calculate PC amplitudes (projection)
     outputs are eigenspectra operates on a 2D array.
@@ -1145,9 +1108,7 @@ def _isvd(i, prange, normstack, return_dict, silent=False):
     eigenspectra = np.transpose(V)
     evals = inormstack.dot(eigenspectra)
     return_dict[i] = [eigenspectra, evals.T]
-
-    if not silent:
-        print 'Finished SVD Segment'
+    logger.debug('Finished SVD Segment')
 
 
 # ### OPTIMIZE #####
@@ -1169,8 +1130,8 @@ def _ivarcurve(i, istack, iespeceval, ivariancearray, return_dict):
 
     for nevals in range(totalnevals):
         if nevals % (totalnevals * .2) <= 1:
-            print 'Seg {0}: {1}% complete '.format(
-                i, int(nevals / (totalnevals - 1.) * 100.))
+            logger.info('Seg %d: %d%% complete ',
+                        i, int(nevals / (totalnevals - 1.) * 100.))
 
         eig = eigenspectra[:, nevals]
         ev = evals[nevals, :]
@@ -1231,13 +1192,14 @@ def _imedian(i, istack, return_dict):
 
 
 @timeit
-def _nanclean(cube, rejectratio=0.25, boxsz=1, silent=False):
+def _nanclean(cube, rejectratio=0.25, boxsz=1):
     """
     Detects NaN values in cube and removes them by replacing them with an
     interpolation of the nearest neighbors in the data cube. The positions in
     the cube are retained in nancube for later remasking.
 
     """
+    logger.info('Cleaning NaN values in the cube')
     cleancube = cube.copy()
     badcube = np.logical_not(np.isfinite(cleancube))        # find NaNs
     badmap = badcube.sum(axis=0)  # map of total nans in a spaxel
@@ -1245,8 +1207,8 @@ def _nanclean(cube, rejectratio=0.25, boxsz=1, silent=False):
     # choose some maximum number of bad pixels in the spaxel and extract
     # positions
     badmask = badmap > (rejectratio * cleancube.shape[0])
-    print "{0} spaxels rejected: > {1}% NaN pixels".format(
-        np.count_nonzero(badmask), rejectratio * 100)
+    logger.info('Rejected %d spaxels with more than %.1f%% NaN pixels',
+                np.count_nonzero(badmask), rejectratio * 100)
 
     # make cube mask of bad spaxels
     # y, x = np.where(badmap > (rejectratio * cleancube.shape[0]))
@@ -1259,7 +1221,7 @@ def _nanclean(cube, rejectratio=0.25, boxsz=1, silent=False):
 
     neighbor = np.zeros((z.size, (2 * boxsz + 1)**3))
     icounter = 0
-    print "fixing {0} pixels".format(len(z))
+    logger.info("Fixing %d remaining NaN pixels", len(z))
 
     # loop over samplecubes
     nz, ny, nx = cleancube.shape
