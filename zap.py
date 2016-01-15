@@ -95,7 +95,7 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
     datacube.
 
     """
-
+    logger.info('Processing %s to compute the SVD', musecubefits)
     check_file_exists(svdfn)
 
     # Check for consistency between weighted median and zlevel keywords
@@ -120,11 +120,9 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
         zobj._zlevel(calctype=zlevel, q=q)
 
     # remove the continuum level - this is multiprocessed to speed it up
-    logger.info('Continuum Filtering')
     zobj._continuumfilter(cftype=cftype, cfwidth=cfwidth)
 
     # do the multiprocessed SVD calculation
-    logger.info('Calculating SVD')
     zobj._msvd()
 
     # write to file
@@ -367,10 +365,10 @@ class zclass:
         routine progresses.
 
         """
+        logger.info('Running ZAP !')
 
         self.optimizeType = optimizeType
 
-        logger.info('Preparing Data for eigenspectra calculation')
         # clean up the nan values
         if clean != False:
             self._nanclean()
@@ -387,7 +385,6 @@ class zclass:
             self.zlq = q
 
         # remove the continuum level - this is multiprocessed to speed it up
-        logger.info('Applying Continuum Filter')
         self._continuumfilter(cfwidth=cfwidth, cftype=cftype)
 
         # do the multiprocessed SVD calculation
@@ -443,6 +440,7 @@ class zclass:
         self.y, self.x = np.where(badmap == 0)
         # extract those positions into a 2d array
         self.stack = self.cube[:, self.y, self.x]
+        logger.debug('%d valid spaxels', len(self.x))
 
     def _externalzlevel(self, extSVD):
         """Remove the zero level from the extSVD file."""
@@ -531,12 +529,15 @@ class zclass:
 
         added to class
         contarray - the removed continuua
-        normstack - "normalized" version of the stack with the continuua removed
+        normstack - "normalized" version of the stack with the continuua
+            removed
+
         """
-        self._cfwidth = cfwidth
+        logger.info('Applying Continuum Filter, cfwidth=%d', cfwidth)
         if cftype != 'weight':
             cftype = 'median'
         self._cftype = cftype
+        self._cfwidth = cfwidth
 
         if cftype == 'median':
             self.contarray = _cfmedian(self.stack, cfwidth=self._cfwidth)
@@ -558,6 +559,7 @@ class zclass:
         to the individual svd methods.
 
         """
+        logger.info('Calculating SVD')
 
         # split the range
         nseg = len(self.pranges)
@@ -571,7 +573,7 @@ class zclass:
                                               axis=0)
             self.normstack[pmin:pmax, :] /= self.variancearray[i, :]
 
-        logger.info('Beginning SVD on %d segments', nseg)
+        logger.debug('Beginning SVD on %d segments', nseg)
 
         # for receiving results of processes
         manager = multiprocessing.Manager()
@@ -617,7 +619,7 @@ class zclass:
 
         # deal with no selection
         if len(nevals) == 0 and len(pevals) == 0:
-            logger.info('number of modes not selected')
+            logger.info('Number of modes not selected')
             nevals = np.array([1])
 
         # deal with an input list
@@ -876,6 +878,7 @@ class zclass:
             hdu.append(pyfits.ImageHDU(self.especeval[i][0]))
         # write for later use
         hdu.writeto(svdfn)
+        logger.info('SVD file saved to %s', svdfn)
 
     def plotvarcurve(self, i=0, ax=None):
         if len(self.varlist) == 0:
@@ -1196,6 +1199,7 @@ def _nanclean(cube, rejectratio=0.25, boxsz=1):
     the cube are retained in nancube for later remasking.
 
     """
+    logger.info('Cleaning NaN values in the cube')
     cleancube = cube.copy()
     badcube = np.logical_not(np.isfinite(cleancube))        # find NaNs
     badmap = badcube.sum(axis=0)  # map of total nans in a spaxel
@@ -1203,7 +1207,7 @@ def _nanclean(cube, rejectratio=0.25, boxsz=1):
     # choose some maximum number of bad pixels in the spaxel and extract
     # positions
     badmask = badmap > (rejectratio * cleancube.shape[0])
-    logger.info("%d spaxels rejected: > %.1f%% NaN pixels",
+    logger.info('Rejected %d spaxels with more than %.1f%% NaN pixels',
                 np.count_nonzero(badmask), rejectratio * 100)
 
     # make cube mask of bad spaxels
@@ -1217,7 +1221,7 @@ def _nanclean(cube, rejectratio=0.25, boxsz=1):
 
     neighbor = np.zeros((z.size, (2 * boxsz + 1)**3))
     icounter = 0
-    logger.info("fixing %d pixels", len(z))
+    logger.info("Fixing %d remaining NaN pixels", len(z))
 
     # loop over samplecubes
     nz, ny, nx = cleancube.shape
