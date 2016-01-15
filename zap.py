@@ -744,7 +744,7 @@ class zclass:
             deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
             noptpix = self.varlist[i].size
 
-            if self.optimizeType == 'normal':
+            if self.optimizeType != 'enhanced':
                 # statistics on the derivatives
                 mn1 = deriv[.5 * (noptpix - 2):].mean()
                 std1 = deriv[.5 * (noptpix - 2):].std() * 2
@@ -755,15 +755,13 @@ class zclass:
                 cross1 = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
                 cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2))  # pad by 2 for 2nd
                 cross = np.logical_or(cross1, cross2)
-
-            if self.optimizeType == 'enhanced':
+            else:
                 logger.info('Enhanced Optimization')
                 # statistics on the derivatives
                 mn1 = deriv[.75 * (noptpix - 2):].mean()
                 std1 = deriv[.75 * (noptpix - 2):].std()
                 mn2 = deriv2[.75 * (noptpix - 2):].mean()
                 std2 = deriv2[.75 * (noptpix - 2):].std()
-
                 cross = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
 
             self.nevals[i] = np.where(cross)[0][0]
