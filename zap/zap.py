@@ -591,6 +591,10 @@ class zclass:
         for proc in jobs:
             proc.join()
 
+        if len(return_dict) < nseg:
+            raise Exception('Missing segments, finished: {}, exitcode: %s'
+                            .format(return_dict.keys(),
+                                    [proc.exitcode for proc in jobs]))
         self.especeval = return_dict.values()
 
     def chooseevals(self, nevals=[], pevals=[]):
@@ -1118,7 +1122,7 @@ def _isvd(i, prange, normstack, return_dict):
     eigenspectra = np.transpose(V)
     evals = inormstack.dot(eigenspectra)
     return_dict[i] = [eigenspectra, evals.T]
-    logger.debug('Finished SVD Segment')
+    logger.info('Finished SVD Segment %d', i)
 
 
 # ### OPTIMIZE #####
