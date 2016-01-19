@@ -740,6 +740,11 @@ class zclass:
         self.varlist = np.array(return_dict.values())
         self.nevals = np.zeros(nseg, dtype=int)
 
+        if self.optimizeType == 'enhanced':
+            logger.info('Enhanced Optimization')
+        else:
+            logger.info('Normal Optimization')
+
         for i in range(nseg):
             # optimize
             deriv = (np.roll(self.varlist[i], -1) - self.varlist[i])[:-1]
@@ -748,22 +753,23 @@ class zclass:
 
             if self.optimizeType != 'enhanced':
                 # statistics on the derivatives
-                mn1 = deriv[.5 * (noptpix - 2):].mean()
-                std1 = deriv[.5 * (noptpix - 2):].std() * 2
-                mn2 = deriv2[.5 * (noptpix - 2):].mean()
-                std2 = deriv2[.5 * (noptpix - 2):].std() * 2
+                ind = int(.5 * (noptpix - 2))
+                mn1 = deriv[ind:].mean()
+                std1 = deriv[ind:].std() * 2
+                mn2 = deriv2[ind:].mean()
+                std2 = deriv2[ind:].std() * 2
                 # look for crossing points. When they get within 1 sigma of
                 # mean in settled region.
                 cross1 = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
                 cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2))  # pad by 2 for 2nd
                 cross = np.logical_or(cross1, cross2)
             else:
-                logger.info('Enhanced Optimization')
                 # statistics on the derivatives
-                mn1 = deriv[.75 * (noptpix - 2):].mean()
-                std1 = deriv[.75 * (noptpix - 2):].std()
-                mn2 = deriv2[.75 * (noptpix - 2):].mean()
-                std2 = deriv2[.75 * (noptpix - 2):].std()
+                ind = int(.75 * (noptpix - 2))
+                mn1 = deriv[ind:].mean()
+                std1 = deriv[ind:].std()
+                mn2 = deriv2[ind:].mean()
+                std2 = deriv2[ind:].std()
                 cross = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
 
             self.nevals[i] = np.where(cross)[0][0]
@@ -951,17 +957,17 @@ def rolling_window(a, window):  # function for striding to help speed up
 
 def _icfweight(i, stack, wt, cfwidth, sprange, return_dict):
     istack = np.rollaxis(stack[:, sprange[0]:sprange[1]], 1)
-    result = np.rollaxis(np.array([wmedian(row, wt, cfwidth=cfwidth) for row in istack]), 1)
+    result = np.rollaxis(np.array([wmedian(row, wt, cfwidth=cfwidth)
+                                   for row in istack]), 1)
     return_dict[i] = result
 
 
 def wmedian(spec, wt, cfwidth=300):
-
     # ignore the warning (feature not a bug)
     old_settings = np.seterr(divide='ignore')
-    spec = np.lib.pad(spec, (cfwidth, cfwidth), 'constant', constant_values=0)
-    wt = np.lib.pad(wt, (cfwidth, cfwidth), 'constant',
-                    constant_values=(np.min(wt) / 1000., np.min(wt) / 1000.))
+    spec = np.pad(spec, (cfwidth, cfwidth), 'constant', constant_values=0)
+    wt = np.pad(wt, (cfwidth, cfwidth), 'constant',
+                constant_values=(np.min(wt) / 1000., np.min(wt) / 1000.))
 
     # do some striding for speed
     swin = rolling_window(spec, cfwidth)  # create window container array
@@ -988,7 +994,8 @@ def wmedian(spec, wt, cfwidth=300):
     f1 = (nws - 0.5) / (nws - nws1)
     f2 = (0.5 - nws1) / (nws - nws1)
     wmed = sdata[sl, s - 1] * f1 + sdata[sl, s] * f2
-    wmed = wmed[cfwidth / 2:-cfwidth / 2 - 1]
+    width = cfwidth // 2
+    wmed = wmed[width:-width - 1]
     np.seterr(old_settings['divide'])
 
     return wmed
