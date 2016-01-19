@@ -844,6 +844,7 @@ class zclass:
         # create hdu and write
         outhdu = pyfits.PrimaryHDU(data=outcube, header=outhead)
         outhdu.writeto(outcubefits)
+        logger.info('Cube file saved to %s', outcubefits)
 
     def writeskycube(self, skycubefits='SKYCUBE_ZAP.fits'):
         """Write the processed datacube to an individual fits file."""
@@ -856,6 +857,7 @@ class zclass:
         # create hdu and write
         outhdu = pyfits.PrimaryHDU(data=outcube, header=outhead)
         outhdu.writeto(skycubefits)
+        logger.info('Sky cube file saved to %s', skycubefits)
 
     def mergefits(self, outcubefits):
         """Merge the ZAP cube into the full muse datacube and write."""
@@ -868,6 +870,7 @@ class zclass:
         hdu[1].data = self._cubetowrite()
         hdu.writeto(outcubefits)
         hdu.close()
+        logger.info('Cube file saved to %s', outcubefits)
 
     def writeSVD(self, svdfn='ZAP_SVD.fits'):
         """Write the SVD to an individual fits file."""
