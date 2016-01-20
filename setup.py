@@ -47,4 +47,7 @@ setup(
     zip_safe=False,
     install_requires=['numpy', 'scipy', 'astropy'],
     extras_require={'plot': ['matplotlib']},
+    entry_points={
+        'console_scripts': ['zap = zap.__main__:main']
+    },
 )
