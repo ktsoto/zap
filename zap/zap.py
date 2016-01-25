@@ -29,6 +29,8 @@ from scipy import ndimage as ndi
 from scipy.stats import sigmaclip
 from time import time
 
+from .version import __version__
+
 PY2 = sys.version_info[0] == 2
 
 if not PY2:
@@ -38,7 +40,7 @@ else:
     text_type = unicode
     string_types = (str, unicode)
 
-logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.DEBUG,
+logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO,
                     stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
@@ -189,7 +191,7 @@ def timeit(func):
 ##################################### Process Steps ###########################
 ###############################################################################
 
-class zclass:
+class zclass(object):
 
     """
     The zclass retains all methods and attributes to run each of the steps of ZAP.
@@ -365,7 +367,7 @@ class zclass:
         routine progresses.
 
         """
-        logger.info('Running ZAP !')
+        logger.info('Running ZAP %s !', __version__)
 
         self.optimizeType = optimizeType
 
@@ -414,12 +416,9 @@ class zclass:
         interpolation of the nearest neighbors in the data cube. The positions
         in the cube are retained in nancube for later remasking.
         """
-        cleancube = _nanclean(self.cube, rejectratio=self._rejectratio,
-                              boxsz=self._boxsz)
-
+        self.cube, self.nancube = _nanclean(
+            self.cube, rejectratio=self._rejectratio, boxsz=self._boxsz)
         self.run_clean = True
-        self.cube = cleancube[0]
-        self.nancube = cleancube[1]
 
     @timeit
     def _extract(self):
@@ -466,6 +465,8 @@ class zclass:
         - run in an iterative sigma clipped mode
 
         """
+
+        self.run_zlevel = calctype
 
         if calctype != 'none':
             logger.info('Subtracting Zero Level')
@@ -517,8 +518,6 @@ class zclass:
         else:
             logger.info('Skipping zlevel subtraction')
 
-        self.run_zlevel = calctype
-
     def _continuumfilter(self, cfwidth=100, cftype='weight'):
         """
         A multiprocessed implementation of the continuum removal. This process
@@ -534,8 +533,9 @@ class zclass:
 
         """
         logger.info('Applying Continuum Filter, cfwidth=%d', cfwidth)
-        if cftype != 'weight':
-            cftype = 'median'
+        if cftype not in ('weight', 'median'):
+            raise ValueError("cftype must be 'weight' or 'median', got {}"
+                             .format(cftype))
         self._cftype = cftype
         self._cfwidth = cfwidth
 
@@ -609,17 +609,11 @@ class zclass:
         or provide an array that defines neval or peval per segment.
 
         """
-        if type(nevals) != list and type(nevals) != type(np.array([0])):  # this can be cleaner
-            nevals = [nevals]
-        if type(pevals) != list and type(pevals) != type(np.array([0])):
-            pevals = [pevals]
         nranges = len(self.especeval)
-        nevals = np.array(nevals)
-        pevals = np.array(pevals)
-        nespec = []
-        for i in range(nranges):
-            nespec.append((self.especeval[i][0]).shape[1])
-        nespec = np.array(nespec)
+        nevals = np.atleast_1d(nevals)
+        pevals = np.atleast_1d(pevals)
+        nespec = np.array([self.especeval[i][0].shape[1]
+                           for i in range(nranges)])
 
         # deal with no selection
         if len(nevals) == 0 and len(pevals) == 0:
@@ -673,7 +667,6 @@ class zclass:
 
         logger.info('Reconstructing Sky Residuals')
         nseg = len(self.especeval)
-
         rec = [(eig[:, :, np.newaxis] * ev[np.newaxis, :, :]).sum(axis=1)
                for eig, ev in self.subespeceval]
 
@@ -800,10 +793,10 @@ class zclass:
         self.variancearray = np.zeros((nseg, self.stack.shape[1]))
 
         for i in range(nseg):
-            self.variancearray[i, :] = np.var(self.normstack[
-                self.pranges[i, 0]:self.pranges[i, 1], :], axis=0)
-            self.normstack[self.pranges[i, 0]:self.pranges[i, 1], :] = self.normstack[
-                self.pranges[i, 0]:self.pranges[i, 1], :] / self.variancearray[i, :]
+            pmin, pmax = self.pranges[i]
+            self.variancearray[i, :] = np.var(self.normstack[pmin:pmax, :],
+                                              axis=0)
+            self.normstack[pmin:pmax, :] /= self.variancearray[i, :]
 
         especeval = []
         for i in range(nseg):
@@ -1023,16 +1016,12 @@ def _cfweight(stack, weight, cfwidth=300):
     nmedpieces = multiprocessing.cpu_count()
 
     # define bins
-    edges = np.append(np.floor(
-        np.arange(0, stack.shape[1], stack.shape[1] / np.float(nmedpieces))),
-        stack.shape[1])
-
-    medianranges = np.array(zip(edges[0:-1], edges[1::])).astype(int)
+    edges = np.linspace(0, stack.shape[1], nmedpieces+1, dtype=int)
+    medianranges = np.vstack((edges[:-1], edges[1:])).T
 
     # for receiving results of processes
     manager = multiprocessing.Manager()
     return_dict = manager.dict()
-
     jobs = []
 
     # multiprocess the variance calculation, operating per segment
@@ -1054,9 +1043,9 @@ def _icfmedian(i, stack, cfwidth, sprange, return_dict):
     Helper function to distribute data to Pool for SVD
     """
     ufilt = 3  # set this to help with extreme over/under corrections
-    result = ndi.median_filter(
-        ndi.uniform_filter(stack[:, sprange[0]:sprange[1]], (ufilt, 1)), (cfwidth, 1))
-    return_dict[i] = result
+    return_dict[i] = ndi.median_filter(
+        ndi.uniform_filter(stack[:, sprange[0]:sprange[1]],
+                           (ufilt, 1)), (cfwidth, 1))
 
 
 @timeit
@@ -1077,16 +1066,12 @@ def _cfmedian(stack, cfwidth=300):
     nmedpieces = multiprocessing.cpu_count()
 
     # define bins
-    edges = np.append(np.floor(
-        np.arange(0, stack.shape[1], stack.shape[1] / np.float(nmedpieces))),
-        stack.shape[1])
-
-    medianranges = np.array(zip(edges[0:-1], edges[1::])).astype(int)
+    edges = np.linspace(0, stack.shape[1], nmedpieces+1, dtype=int)
+    medianranges = np.vstack((edges[:-1], edges[1:])).T
 
     # for receiving results of processes
     manager = multiprocessing.Manager()
     return_dict = manager.dict()
-
     jobs = []
 
     # multiprocess the variance calculation, operating per segment
@@ -1115,9 +1100,7 @@ def _isvd(i, prange, normstack, return_dict):
     data = [nbins, nobj]
     """
 
-    inormstack = normstack[prange[0]:prange[1], :]
-    inormstack = np.transpose(inormstack)
-
+    inormstack = normstack[prange[0]:prange[1], :].T
     U, s, V = np.linalg.svd(inormstack, full_matrices=0)
     eigenspectra = np.transpose(V)
     evals = inormstack.dot(eigenspectra)
@@ -1160,21 +1143,18 @@ def _ivarcurve(i, istack, iespeceval, ivariancearray, return_dict):
 
 
 def _newheader(zobj):
-
+    """Put the pertinent zap parameters into the header"""
     header = zobj.header.copy()
-
-    # put the pertinent zap parameters into the header
     header['COMMENT'] = 'These data have been ZAPped!'
-
+    header.append(('ZAPvers', __version__, 'ZAP version'), end=True)
     # zlevel removal performed
-    header.append(('ZAPzlvl', zobj.run_zlevel, 'ZAP zero level correction'), end=True)
-
+    header.append(('ZAPzlvl', zobj.run_zlevel, 'ZAP zero level correction'))
     # zlevel removal performed
-    header.append(('ZAPzlq', zobj.zlq, 'ZAP quartiles used for zero level correction'))
-
+    header.append(('ZAPzlq', zobj.zlq,
+                   'ZAP quartiles used for zero level correction'))
     # Nanclean performed
-    header['ZAPclean'] = (zobj.run_clean, 'ZAP NaN cleaning performed for calculation')
-
+    header['ZAPclean'] = (zobj.run_clean,
+                          'ZAP NaN cleaning performed for calculation')
     # Continuum Filtering
     header['ZAPcftyp'] = (zobj._cftype, 'ZAP continuum filter type')
     header['ZAPcfwid'] = (zobj._cfwidth, 'ZAP continuum filter size')
@@ -1185,10 +1165,12 @@ def _newheader(zobj):
 
     # per segment variables
     for i in range(nseg):
-        header['ZAPseg{0}'.format(i)] = ('{0}:{1}'.format(zobj._wlmin + zobj.pranges[i][0],
-                                                          zobj._wlmin + zobj.pranges[i][1] - 1),
-                                         'spectrum segment (pixels)')
-        header['ZAPnev{0}'.format(i)] = (zobj.nevals[i], 'number of eigenvals/spectra used')
+        header['ZAPseg{0}'.format(i)] = (
+            '{0}:{1}'.format(zobj._wlmin + zobj.pranges[i][0],
+                             zobj._wlmin + zobj.pranges[i][1] - 1),
+            'spectrum segment (pixels)')
+        header['ZAPnev{0}'.format(i)] = (zobj.nevals[i],
+                                         'number of eigenvals/spectra used')
 
     return header
 
