@@ -51,8 +51,9 @@ logger = logging.getLogger(__name__)
 
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
-            zlevel='median', cftype='weight', cfwidth=100, pevals=[],
-            nevals=[], optimizeType='normal', extSVD='', skycubefits='',
+            zlevel='median', cftype='weight', cfwidthEV=100, cfwidthSP=50,
+            pevals=[], nevals=[], optimizeType='normal', extSVD='',
+            skycubefits='', svdoutputfits='ZAP_SVD.fits', mask='',
             interactive=False):
     """ Performs the entire ZAP sky subtraction algorithm.
 
@@ -94,6 +95,8 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     skycubefits : str
         Path for the optional output of the sky that is subtracted from the
         cube. This is simply the input cube minus the output cube.
+    svdoutputfits : str
+        Output FITS file. Default to ZAP_SVD.fits
     interactive : bool
         If True, an object containing all informations on the ZAP process is
         returned, and can be used to explore the eigenspectra and recompute the
@@ -112,7 +115,8 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     # check if outcubefits/skycubefits exists before beginning
     check_file_exists(outcubefits)
     check_file_exists(skycubefits)
-
+    check_file_exists(svdoutputfits)
+    
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
         raise ValueError('Weighted median requires a zlevel calculation')
@@ -120,21 +124,45 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     if optimizeType not in ('none', 'normal', 'enhanced'):
         raise ValueError('Invalid value for optimizeType')
 
-    zobj = zclass(musecubefits)
-    zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidth, cftype=cftype,
-              pevals=pevals, nevals=nevals, optimizeType=optimizeType,
-              extSVD=extSVD)
+    if extSVD != '':
+
+        if mask != '' or cfwidthEV != cfwidthSP:
+            SVDoutput(musecubefits, svdoutputfits=svdoutputfits,
+                      clean=clean, zlevel=zlevel, cftype=cftype,
+                      cfwidth=cfwidthEV, mask=mask)
+
+            zobj = zclass(musecubefits)
+            zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidthSP,
+                      cftype=cftype, pevals=pevals, nevals=nevals,
+                      optimizeType=optimizeType, extSVD=svdoutputfits)
+
+        else:
+
+            zobj = zclass(musecubefits)
+            zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidthSP,
+                      cftype=cftype, pevals=pevals, nevals=nevals,
+                      optimizeType=optimizeType, extSVD=extSVD)
+            if not interactive:
+                zobj.writeSVD(svdoutputfits=svdoutputfits)
+
+    else:
+        
+        zobj = zclass(musecubefits)
+        zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidthSP,
+                  cftype=cftype, pevals=pevals, nevals=nevals,
+                  optimizeType=optimizeType, extSVD=extSVD)
 
     if not interactive:
         if skycubefits != '':
             zobj.writeskycube(skycubefits=skycubefits)
 
         zobj.mergefits(outcubefits)
+
     else:
         return zobj
 
-def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
-              zlevel='median', cftype='weight', cfwidth=300, mask=None):
+def SVDoutput(musecubefits, svdoutputfits='ZAP_SVD.fits', clean=True,
+              zlevel='median', cftype='weight', cfwidth=100, mask=None):
     """ Performs the SVD decomposition of a datacube.
 
     This allows to use the SVD for a different datacube.
@@ -144,7 +172,7 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
 
     musecubefits : str
         Input FITS file, containing a cube with data in the first extension.
-    svdfn : str
+    svdoutputfits : str
         Output FITS file. Default to ZAP_SVD.fits
     clean : bool
         If True (default value), the NaN values are cleaned. Spaxels with more
@@ -163,7 +191,7 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
 
     """
     logger.info('Processing %s to compute the SVD', musecubefits)
-    check_file_exists(svdfn)
+    check_file_exists(svdoutputfits)
 
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
@@ -193,7 +221,7 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
     zobj._msvd()
 
     # write to file
-    zobj.writeSVD(svdfn=svdfn)
+    zobj.writeSVD(svdoutputfits=svdoutputfits)
 
 
 def contsubfits(musecubefits, contsubfn='CONTSUB_CUBE.fits', cfwidth=300):
@@ -920,16 +948,16 @@ class zclass(object):
         hdu.close()
         logger.info('Cube file saved to %s', outcubefits)
 
-    def writeSVD(self, svdfn='ZAP_SVD.fits'):
+    def writeSVD(self, svdoutputfits='ZAP_SVD.fits'):
         """Write the SVD to an individual fits file."""
 
-        check_file_exists(svdfn)
+        check_file_exists(svdoutputfits)
         hdu = fits.HDUList([fits.PrimaryHDU(self.zlsky)])
         for i in range(len(self.pranges)):
             hdu.append(fits.ImageHDU(self.especeval[i][0]))
         # write for later use
-        hdu.writeto(svdfn)
-        logger.info('SVD file saved to %s', svdfn)
+        hdu.writeto(svdoutputfits)
+        logger.info('SVD file saved to %s', svdoutputfits)
 
     def plotvarcurve(self, i=0, ax=None):
         if len(self.varlist) == 0:
