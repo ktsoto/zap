@@ -47,7 +47,7 @@
 <ul class="simple">
 </ul>
 </div>
-<p>ZAP (the Zurich Atmosphere Purge) is a high precision sky subtraction tool which can be used as complete sky subtraction solution, or as an enhancement to previously sky-subtracted data.  <strong>Currently, the best results come from applying ZAP to a datacube with no initial sky subtraction.</strong> The method uses PCA to isolate the residual features and remove them from the observed datacube.</p>
+<p>ZAP (the Zurich Atmosphere Purge) is a high precision sky subtraction tool which can be used as complete sky subtraction solution, or as an enhancement to previously sky-subtracted data.  <strong>Currently, the best results come from applying ZAP to a datacube with no initial sky subtraction.</strong> The method uses PCA to isolate the residual sky subtraction features and remove them from the observed datacube. Though the operation of ZAP is not dependent on perfect flatfielding of the data in a MUSE exposure, better results are obtained when these corrections are made ahead of time.</p>
 </div>
 <div class="section" id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
@@ -57,13 +57,12 @@
 </pre></div>
 </div>
 <p>Care should be taken, however, since this case assumes a sparse field.</p>
-<p>There are a number of options that can be passed to the code which we tabulate here, and will describe in several diffferent use cases. While every option is available in each type of processing, I outine several example cases below.</p>
-<p>It is important to note that many of these optioons come into play when building a basis set that will go into doing sky subtraction calculation.</p>
+<p>There are a number of options that can be passed to the code which we tabulate here, and describe in several different use cases.</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="9%" />
-<col width="9%" />
-<col width="83%" />
+<col width="10%" />
+<col width="18%" />
+<col width="72%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Keyword</th>
@@ -72,15 +71,19 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td>clean</td>
+<tr class="row-even"><td>outcubefits</td>
+<td>&#8216;DATACUBE_ZAP.fits&#8217;</td>
+<td>the fits filename for the output datacube.</td>
+</tr>
+<tr class="row-odd"><td>clean</td>
 <td>True</td>
 <td>Interpolates over NaN values in the datacube to allow processing on all
-spectra for the input SVD. The NaN values are replaced in the final datacube.
-Any spaxel that includes a NaN pixel will be rejected from the SVD
-calculation, so this step is used to maximixe the number of contributors, but
-the NaNs remain in the final datacube.</td>
+spectra. The NaN values are replaced in the final datacube.
+Any spaxel that includes a NaN pixel will hinder the calculation, so this
+step is used to maximize the number of contributors. The NaN values are
+reinserted into the final datacube.</td>
 </tr>
-<tr class="row-odd"><td>zlevel</td>
+<tr class="row-even"><td>zlevel</td>
 <td>&#8216;median&#8217;</td>
 <td>This option is used to define the method for determining the zeroth order
 subtraction of the sky. This is used to remove any systematic sky feature
@@ -88,14 +91,8 @@ that exists over the whole field. Options are &#8216;median&#8217;, &#8216;sigcl
 The &#8216;none&#8217; option should only be applied when ZAP is applied to enhance a
 previous sky subtraction.</td>
 </tr>
-<tr class="row-even"><td>q</td>
-<td>0</td>
-<td>Quartile selection, this option will remove the top n quartiles of the
-dataset to calculate of the zlsky. This option works well set to 1 with the
-&#8216;sigclip&#8217; option.</td>
-</tr>
 <tr class="row-odd"><td>cftype</td>
-<td>&#8216;median&#8217;</td>
+<td>&#8216;weight&#8217;</td>
 <td>The type of filtering that is applied to remove the continuum.  &#8216;weight&#8217;
 refers to the weighted median, which uses the calculated zlevel sky as the
 weight. &#8216;median&#8217; refers to a rolling median filter with a nested small
@@ -104,37 +101,47 @@ slower (an additional 10 minutes on a single exposure) and should only be
 run in the complete sky subtraction case.</td>
 </tr>
 <tr class="row-even"><td>cfwidth</td>
-<td>300</td>
+<td>100</td>
 <td>Size of the filterbox used to remove the continuum features in order to
 sterilize the basis set used to calculate the eigenbasis.</td>
 </tr>
 <tr class="row-odd"><td>optimize</td>
-<td>True</td>
-<td>A flag used to call the optimization method. This automatically determines the
-number of eigenspectra/eigenvalues to use per segment.</td>
+<td>&#8216;normal&#8217;</td>
+<td>A flag used to call the optimization method. The possible options are
+&#8216;normal&#8217;, &#8216;enhanced&#8217;, and &#8216;none&#8217;.</td>
 </tr>
 <tr class="row-even"><td>nevals</td>
 <td>[]</td>
-<td>Number of eigenspectra/eigenvaules used per spectral segment. If this
-is used, the pevals is ignored. Provide either a single value that will be
-used for all of the segments, or a list of 9 values that will be used for
-each of the segments.</td>
+<td>This option is used for the manual selection of the the number of eigenvectors
+to be used. If this is used, the pevals is ignored. Provide either a single
+value that will be used for all of the segments, or a list of 11 values that
+will be used for each of the segments.</td>
 </tr>
 <tr class="row-odd"><td>pevals</td>
 <td>[]</td>
-<td>Percentage of the caclulated eigenspectra/eigenvaules used per spectral
-segment. Provide either a single value that will be used for all of the
-segments, or a list of 9 values that will be used for each of the segments.</td>
+<td>This option is used for the manual selection of the the number of eigenvectors
+to be used. This value is the percentage of the calculated
+eigenspectra/eigenvalues used per spectral segment. Provide either a single
+value that will be used for all of the segments, or a list of 11 values that
+will be used for each of the segments.</td>
 </tr>
 <tr class="row-even"><td>extSVD</td>
 <td>&#8216;&#8217;</td>
 <td>An optional parameter that allows the input of a externally calculated
-eigenbasis as well as a zlevel</td>
+eigenbasis as well as a zlevel. This can be constructed from either a masked
+version of a sparse field case, or an external sky frame.</td>
 </tr>
 <tr class="row-odd"><td>mask</td>
 <td>&#8216;&#8217;</td>
-<td>(only used with the SVDoutput method) A 2D fits image to exclude regions that
-may contaminate the zlevel or eigenspectra.</td>
+<td>A 2D fits image to exclude regions that may contaminate the zlevel or
+eigenspectra. This image should be constructed from the datacube itself to
+match the dimensionality. Sky regions should be marked as 0, and astronomical
+sources should be identified with an integer greater than or equal to 1.</td>
+</tr>
+<tr class="row-even"><td>interactive</td>
+<td>False</td>
+<td>Setting this option to True will allow the user to pass out the zclass which
+contains all of the data and methods of ZAP. We describe this use below.</td>
 </tr>
 </tbody>
 </table>
@@ -158,66 +165,50 @@ may contaminate the zlevel or eigenspectra.</td>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>It is possible to change the zlevel calculation with:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">zlevel</span><span class="o">=</span><span class="s">&#39;sigclip&#39;</span><span class="p">)</span>
+<p>It is possible to add a mask to this operation:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;mask.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="partially-filled-case">
-<h2>Partially Filled Case<a class="headerlink" href="#partially-filled-case" title="Permalink to this headline">¶</a></h2>
-<p>There are two approaches to this case, which both use an algorithm to limit the effect of the large object on the determination of the sky. The first approach is similar to the sparse case, except to include quartile rejection for the zlevel calculation.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">zlevel</span><span class="o">=</span><span class="s">&#39;sigclip&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>This option removes the top quatile per spectral channel of the data before determining the contribution to the zlevel. This option used along with the sigma clipping can identify the background sky level, without including signal from the objects. This is the best option for a field that has many objects.</p>
-<p>The second option is to use a mask to generate the intial SVD calculation, as described below.</p>
-</div>
-<div class="section" id="pre-determined-zlevel-and-eigenspectra">
-<h2>Pre-determined zlevel and eigenspectra<a class="headerlink" href="#pre-determined-zlevel-and-eigenspectra" title="Permalink to this headline">¶</a></h2>
-<p>Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. The values in the mask image will be 0 in the masked regions (such a where an extended object is) and 1 in the unmasked regions. Set this parameter with <tt class="docutils literal"><span class="pre">mask='maskfilename.fits'</span></tt></p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;Masked_ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;maskfilename.fits&#39;</span><span class="p">)</span> <span class="c"># create SVD file</span>
-<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">)</span>
+<div class="section" id="masked-processing">
+<h2>Masked Processing<a class="headerlink" href="#masked-processing" title="Permalink to this headline">¶</a></h2>
+<p>Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. The values in the mask image will be 0 in the masked regions (such a where an extended object is) and 1 in the unmasked regions. Set this parameter with <tt class="docutils literal"><span class="pre">mask='maskfile.fits'</span></tt></p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;maskfile.fits&#39;</span><span class="p">)</span> <span class="c"># create SVD file</span>
+<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">cfwidth</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="saturated-field-case-and-time-series-sky">
-<h2>Saturated Field Case and Time Series Sky<a class="headerlink" href="#saturated-field-case-and-time-series-sky" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="filled-field-case">
+<h2>Filled Field Case<a class="headerlink" href="#filled-field-case" title="Permalink to this headline">¶</a></h2>
 <p>This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation.</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="s">&#39;Offset_Field_CUBE.fits&#39;</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;Offset_ZAP_SVD.fits&#39;</span><span class="p">)</span>
-<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">)</span>
+<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">cfwidth</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure. A series sky datacubes can also be used to identify time varying components of the sky.  For example if one particular set of sky lines is present at the beginning of the exposure and absent at the end of the exposure. In this case it is best to take a sky frame before and after the science frame. This is most helpful in the saturated field case, since the offset frames are taken at a different time than the science frame. To use this option, simply provide a list of offset file names.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">OffsetCubeList</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;OffsetFieldCUBE1.fits&#39;</span><span class="p">,</span><span class="s">&#39;OffsetFieldCUBE2.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OffsetFieldCUBE3.fits&#39;</span><span class="p">]</span>
-<span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="n">OffsetCubeList</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;Offset_ZAP_SVD.fits&#39;</span><span class="p">)</span>
-<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
+<p>The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure.</p>
 <div class="section" id="top-level-functions">
-<h1>Top Level Functions<a class="headerlink" href="#top-level-functions" title="Permalink to this headline">¶</a></h1>
-<p>Aside from the main &#8220;full process&#8221;, I have also included two functions that can be run outside of the entire zap process to facilitate some investigations.</p>
-<p><strong>nan removal</strong></p>
+<h3>Top Level Functions<a class="headerlink" href="#top-level-functions" title="Permalink to this headline">¶</a></h3>
+<p>Aside from the main &#8220;full process&#8221;, two functions are included that can be run outside of the entire zap process to facilitate some investigations.</p>
+<p><strong>nan cleaning</strong></p>
 <p>This function replaces the nan valued pixels with an average of the adjacent valid pixels. It can be called as below:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">nancleanfits</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">outfn</span><span class="o">=</span><span class="s">&#39;NANCLEAN_CUBE.fits&#39;</span><span class="p">,</span> <span class="n">rejectratio</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">boxsz</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>&#8220;rejectratio&#8221; defines a cutoff for the ratio of pixels in a spaxel before the spaxel is avoided completely.</p>
-<p>&#8220;boxsz&#8221; defines the number of pixels that defines the box around the offending nan pixel. With boxsz set to 1 the function looks for the nearest 26 neighbors which is a 3x3 box.</p>
-<p>This step is only an intermediary step in the full ZAP process as a way to create a clean input into the SVD calculation, but this function allows you to run it as a standalone step.</p>
+<p>&#8220;boxsz&#8221; defines the number of pixels that defines the box around the offending nan pixel. With boxsz set to 1 the function looks for the nearest 26 neighbors which is a 3x3x3 cube.</p>
+<p>This step is an intermediary step in the full ZAP process, but this function allows you to run it as a standalone step.</p>
 <p><strong>continuum removal</strong></p>
 <p>This function applies a filter on the datacube that removes most continuum features. This function allows for the enhancement of emission line characteristics. The filtering method has been enhanced by multiprocessing to produce a rapid result. It can be called as below:</p>
 <div class="highlight-python"><div class="highlight"><pre>zap.contsubfits(musecubefits, contsubfn=&#39;CONTSUB_CUBE.fits&#39;, cfilter=100):
 </pre></div>
 </div>
-<p>It applies a nested set of filters, one uniform of width 3 pixels and one median with a width defined by cfilter. This filter differs from the new enhanced method in the ZAP process.</p>
+<p>It applies a nested set of filters, one uniform of width 3 pixels and one median with a width defined by cfilter. Since it does not calculate a zlevel, it can only use the &#8216;median&#8217; method.</p>
 </div>
 <div class="section" id="interactive-mode">
-<h1>Interactive mode<a class="headerlink" href="#interactive-mode" title="Permalink to this headline">¶</a></h1>
+<h3>Interactive mode<a class="headerlink" href="#interactive-mode" title="Permalink to this headline">¶</a></h3>
 <p>ZAP can also  be used interactively from within ipython using pyfits.</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">mpdaf_user</span> <span class="kn">import</span> <span class="n">zap</span>
-<span class="n">zclass</span> <span class="o">=</span> <span class="n">zap</span><span class="o">.</span><span class="n">interactive</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">)</span>
+<span class="n">zclass</span> <span class="o">=</span> <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The run method operates on the datacube, and retains all of the data and methods necessary to
@@ -225,19 +216,18 @@ process a final data cube in a python class named zclass. You can elect to inves
 <div class="highlight-python"><div class="highlight"><pre>from mpdaf_user import zap
 from matplotlib import pyplot as plt
 
-zobj = zap.interactive(&#39;INPUT.fits&#39;, pevals=1) #choose 1% of modes per segment
-
-#investigate the dataproduct with pyplot
-plt.figure()
+zobj = zap.process(&#39;INPUT.fits&#39;, optimization=&#39;normal&#39;) #allow ZAP to run the optimize routine
+zobj.plotvarcurve(5) #plot the variance curves and the selection of the number of eigenspectra used
 
 #plot a spectrum extracted from the original cube
+plt.figure()
 plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), &#39;b&#39;, alpha=0.3)
 
 #plot a spectrum of the cleaned ZAP dataproduct
 plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2)), &#39;g&#39;)
 
-#choose just the major mode
-zobj.reprocess(nevals=1)
+#choose just the first 3 spectra for all segmments
+zobj.reprocess(nevals=3)
 
 #plot a spectrum extracted from the original cube
 plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), &#39;b&#39;, alpha=0.3)
@@ -265,144 +255,154 @@ plt.matshow(zobj.cube[2903,:,:])
 plt.figure()
 plt.matshow(zobj.cleancube[2903,:,:])
 
-#write the processed cube
+#write the processed cube as a single extension fits
 zobj.writecube(&#39;DATACUBE_ZAP.fits&#39;)
 
-#or merge the zap datacube into to whole inout datacube, replacing the data extension
+#or merge the zap datacube into the original input datacube, replacing the data extension
 zobj.writefits(outcubefits=&#39;DATACUBE_FINAL_ZAP.fits&#39;)
 </pre></div>
 </div>
 </div>
 <div class="section" id="zclass">
-<h1>ZCLASS<a class="headerlink" href="#zclass" title="Permalink to this headline">¶</a></h1>
+<h3>ZCLASS<a class="headerlink" href="#zclass" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="zap.zclass">
 <em class="property">class </em><tt class="descclassname">zap.</tt><tt class="descname">zclass</tt><big>(</big><em>musecubefits</em><big>)</big><a class="headerlink" href="#zap.zclass" title="Permalink to this definition">¶</a></dt>
-<dd><p>The zclass retains all methods and attributes to run each of the steps of ZAP.</p>
-<p>Attributes:</p>
-<blockquote>
-<div><p>cleancube - The final datacube after removing all of the residual features.</p>
-<p>contarray - A 2d array containing the subtracted continuum per spaxel.</p>
-<p>cube - The original data cube with the zlevel subtraction performed per spaxel.</p>
+<dd><p>Main class to run each of the steps of ZAP.</p>
 <dl class="docutils">
-<dt>especeval - A list containing the full set of eigenspectra and eigenvalues generated by the</dt>
-<dd>SVD calculation that is used toy reconstruct the entire datacube.</dd>
-<dt>laxis - A 1d array containing the wavelength solution generated from the header</dt>
-<dd>parameters.</dd>
+<dt>cleancube <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>The final datacube after removing all of the residual features.</dd>
+<dt>contarray <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>A 2D array containing the subtracted continuum per spaxel.</dd>
+<dt>cube <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>The original cube with the zlevel subtraction performed per spaxel.</dd>
+<dt>especeval <span class="classifier-delimiter">:</span> <span class="classifier">list of (eigenspectra, eval)</span></dt>
+<dd>A list containing the full set of eigenspectra and eigenvalues
+generated by the SVD calculation that is used toy reconstruct the
+entire datacube.</dd>
+<dt>laxis <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>A 1d array containing the wavelength solution generated from the header
+parameters.</dd>
+<dt>lparams <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>An array of parameters taken from the header to generate the wavelength
+solution.</dd>
+<dt>lranges <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>A list of the wavelength bin limits used in segmenting the sepctrum
+for SVD.</dd>
+<dt>lmin,lmax <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>The wavelength limits placed on the datacube.</dd>
+<dt>nancube <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>A 3d boolean datacube containing True in voxels where a NaN value was
+replaced with an interpolation.</dd>
+<dt>nevals <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>A 1d array containing the number of eigenvalues used per segment to
+reconstruct the residuals.</dd>
+<dt>normstack <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>A normalized version of the datacube decunstructed into a 2d array.</dd>
+<dt>varlist <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>An array for each segment with the variance curve, calculated for the
+optimize method.</dd>
+<dt>pranges <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>The pixel indices of the bounding regions for each spectral segment.</dd>
+<dt>recon <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>A 2d array containing the reconstructed emission line residuals.</dd>
+<dt>run_clean <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>Boolean that indicates that the NaN cleaning method was used.</dd>
+<dt>run_zlevel <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>Boolean indicating that the zero level correction was used.</dd>
+<dt>stack <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>The datacube deconstructed into a 2d array for use in the the SVD.</dd>
+<dt>subespeceval <span class="classifier-delimiter">:</span> <span class="classifier">list of (eigenspectra, eval)</span></dt>
+<dd>The subset of eigenvalues and eigenspectra used to reconstruct the sky
+residuals.</dd>
+<dt>variancearray <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>A list of length nsegments containing variances calculated per spaxel
+used for normalization</dd>
+<dt>y,x <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>The position in the cube of the spaxels that are in the 2d
+deconstructed stack</dd>
+<dt>zlsky <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>A 1d array containing the result of the zero level subtraction</dd>
 </dl>
-<p>lparams - An array of parameters taken from the header to generate the wavelength solution.</p>
-<p>lranges - A list of the wavelength bin limits used in segmenting the sepctrum for SVD.</p>
-<p>lmin,lmax - the wavelength limits placed on the datacube</p>
-<dl class="docutils">
-<dt>nancube - A 3d boolean datacube containing True in voxels where a NaN value was replaced</dt>
-<dd>with an interpolation.</dd>
-<dt>nevals - A 1d array containing the number of eigenvalues used per segment to reconstruct</dt>
-<dd>the residuals.</dd>
-</dl>
-<p>normstack - A normalized version of the datacube decunstructed into a 2d array.</p>
-<dl class="docutils">
-<dt>nsegments - The number of divisions in wavelength space that the cube is cut into in order</dt>
-<dd>to perform the SVD.</dd>
-<dt>varlist - An array for each segment with the variance curve, calculated for the</dt>
-<dd>optimize method.</dd>
-</dl>
-<p>pranges - The pixel indices of the bounding regions for each spectral segment.</p>
-<p>recon - A 2d array containing the reconstructed emission line residuals.</p>
-<p>run_clean - Boolean that indicates that the NaN cleaning method was used.</p>
-<p>run_zlevel - Boolean indicating that the zero level correction was used.</p>
-<p>stack - The datacube deconstructed into a 2d array for use in the the SVD.</p>
-<dl class="docutils">
-<dt>subespeceval - The subset of eigenvalues and eigenspectra used to reconstruct the sky</dt>
-<dd>residuals.</dd>
-<dt>variancearray - A list of length nsegments containing variances calculated per spaxel used</dt>
-<dd>for normalization</dd>
-</dl>
-<p>y,x - The position in the cube of the spaxels that are in the 2d deconstructed stack</p>
-<p>zlsky - A 1d array containing the result of the zero level subtraction</p>
-</div></blockquote>
 <dl class="method">
 <dt id="zap.zclass.chooseevals">
 <tt class="descname">chooseevals</tt><big>(</big><em>nevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>pevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.chooseevals" title="Permalink to this definition">¶</a></dt>
-<dd><p>Choose the number of eigenspectra/evals to use for reconstruction</p>
-<p>user supplies the number of eigen spectra to be used (neval) or the percentage
-of the eigenspectra that were calculated (peval) from each spectral segment to be used.</p>
-<p>The user can either provide a single value to be used for all segments, or
-provide an array that defines neval or peval per segment.</p>
+<dd><p>Choose the number of eigenspectra/evals to use for reconstruction.</p>
+<p>User supplies the number of eigen spectra to be used (neval) or the
+percentage of the eigenspectra that were calculated (peval) from each
+spectral segment to be used.</p>
+<p>The user can either provide a single value to be used for all segments,
+or provide an array that defines neval or peval per segment.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.make_contcube">
 <tt class="descname">make_contcube</tt><big>(</big><big>)</big><a class="headerlink" href="#zap.zclass.make_contcube" title="Permalink to this definition">¶</a></dt>
-<dd><p>Takes the continuum stack and returns it into a familiar cube form.</p>
+<dd><p>Remold the continuum array so it can be investigated.</p>
+<p>Takes the continuum stack and returns it into a familiar cube form.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.mergefits">
 <tt class="descname">mergefits</tt><big>(</big><em>outcubefits</em><big>)</big><a class="headerlink" href="#zap.zclass.mergefits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Merge the ZAP cube into the full muse datacube and write</p>
+<dd><p>Merge the ZAP cube into the full muse datacube and write.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.optimize">
-<tt class="descname">optimize</tt><big>(</big><big>)</big><a class="headerlink" href="#zap.zclass.optimize" title="Permalink to this definition">¶</a></dt>
-<dd><p>Function to optimize the number of components used to characterize the residuals.</p>
-<p>This function calculates the variance per segment with an increasing number of
-eigenspectra/eigenvalues. It then deterimines the point at which the second derivative
-of this variance curve reaches zero. When this occurs, the linear reduction in variance
-is attributable to the removal of astronomical features rather than emission line
-residuals.</p>
+<tt class="descname">optimize</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#zap.zclass.optimize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to optimize the number of components used to characterize
+the residuals.</p>
+<p>This function calculates the variance per segment with an increasing
+number of eigenspectra/eigenvalues. It then deterimines the point at
+which the second derivative of this variance curve reaches zero. When
+this occurs, the linear reduction in variance is attributable to the
+removal of astronomical features rather than emission line residuals.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.reconstruct">
-<tt class="descname">reconstruct</tt><big>(</big><big>)</big><a class="headerlink" href="#zap.zclass.reconstruct" title="Permalink to this definition">¶</a></dt>
-<dd><p>Multiprocessed residual reconstruction.</p>
-<p>Distributes the trimmed eigenspectra/eigenvalues to the reconstruction method.</p>
+<tt class="descname">reconstruct</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#zap.zclass.reconstruct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reconstruct the residuals from a given set of eigenspectra and
+eigenvalues</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.remold">
 <tt class="descname">remold</tt><big>(</big><big>)</big><a class="headerlink" href="#zap.zclass.remold" title="Permalink to this definition">¶</a></dt>
-<dd><p>Subtracts the reconstructed residuals and places the cleaned spectra into the duplicated
-datacube.</p>
+<dd><p>Subtracts the reconstructed residuals and places the cleaned
+spectra into the duplicated datacube.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.reprocess">
 <tt class="descname">reprocess</tt><big>(</big><em>pevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>nevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.reprocess" title="Permalink to this definition">¶</a></dt>
-<dd><p>A method that redoes the eigenvalue selection, reconstruction, and remolding of the
-data.</p>
+<dd><p>A method that redoes the eigenvalue selection, reconstruction, and
+remolding of the data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="zap.zclass.writeSVD">
+<tt class="descname">writeSVD</tt><big>(</big><em>svdfn='ZAP_SVD.fits'</em><big>)</big><a class="headerlink" href="#zap.zclass.writeSVD" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write the SVD to an individual fits file.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.writecube">
 <tt class="descname">writecube</tt><big>(</big><em>outcubefits='DATACUBE_ZAP.fits'</em><big>)</big><a class="headerlink" href="#zap.zclass.writecube" title="Permalink to this definition">¶</a></dt>
-<dd><p>write the processed datacube to an individual fits file.</p>
+<dd><p>Write the processed datacube to an individual fits file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="zap.zclass.writeskycube">
+<tt class="descname">writeskycube</tt><big>(</big><em>skycubefits='SKYCUBE_ZAP.fits'</em><big>)</big><a class="headerlink" href="#zap.zclass.writeskycube" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write the processed datacube to an individual fits file.</p>
 </dd></dl>
 
 </dd></dl>
 
 </div>
-<div class="section" id="algorithm-description">
-<h1>Algorithm description<a class="headerlink" href="#algorithm-description" title="Permalink to this headline">¶</a></h1>
-<p>ZAP is designed to remove the residual sky emission features after an initial Sky subtraction. To make this correction, several steps must be performed. Many of these are constructed to create a set of input spectra for singular value decomposition. By performing these prior steps we can better isolate the eigenspectra and eigenvalues that reconstruct the sky residuals without influencing the Astronomical objects. Below is a description of each of the processing steps.</p>
-<p>The key point in this approach is that the preliminary steps are use to remove as many easily determined non-sky features from the spectra going into the SVD calculation. The sky features are then reconstructed and removed from the original datacube.</p>
-<p>Set by keyword &#8220;clean = True&#8221;</p>
-<p>NaN (Not a Number) pixels interfere with the SVD (Singular Value Decomposition) by being unbounded. Since the eigenspectra can not reconstruct these values, the pixel must be either replaced with a float or the spaxel for which it is a member removed from the calculation. By Performing the NaN cleaning step, we choose the first of these options.</p>
-<p>This algorithm identifies NaN pixels in the datacube and replaces them by interpolating with the 26 (3x3x3 - 1) nearest neighbor pixels in the 3D datacube. Any NaN values in this set of pixels is ingored and the mean of the finite values replaces the central pixel. ZAP retains the position of these NaN values so that the pixels can be converted back into NaN values in the final dataproduct.</p>
-<p>The user has the option to exlude this step (run_clean = False), but should be advised that the presence of a single NaN pixel will exclude an entire spaxel from the entire calculation leaving it uncorrected.</p>
-<p>Remove systematic offset in each spectral channel.</p>
-<p>Set by keyword &#8220;zlevel = True&#8221;</p>
-<p>This processing step is performed to remove residual sky features that are consistent over the entire field. The &#8220;zero level&#8221; is determined from the median per spectral channel, producing a spectrum of the residual. This spectrum can be accessed in the interactive mode from the produced instance of the zclass (Described below)</p>
-<p>The user should be cautious in cases where a spectral feature, such as an emission line, covers the entire field. In these cases, the median calculation will erroneously remove this feature.  Several approaches are in development for handling this case.</p>
-<p>Remove the continuum from each spaxel via filtering.</p>
-<p>Filter size set by keyword &#8220;cfilt = 100&#8221;</p>
-<p>The continuum filter is a process that removes astrophysical continuum features through the use of a combination of two sprectral filters. A uniform filter that is rougly on the scale of the spectral resolution (3 pixels) smooths any extreme variations on this small scale. The next filter is a large scale (100 pixels) median filter, which has the property of tracing a multitude of continuum shapes, including sharp edges in the spectrum. The result of these filters is then subtracted from the spectra leaving only object emission lines and sky residuals in the spectra.</p>
-<p>This algorithm operates by segmenting the data into regions of the spectrum with strongly correlated features. This segmentation benefits the calculation in two ways. First, the correlated features are isolated from each other, making the dominant modes more pronounced, and therefore easier to choose when the algorithm reconstructs the residuals.  Second, this data segmentation allows us to implement multiprocessing on the calculations, which greatly reduces the calculation time.</p>
-<p>Normalize the spectra to be inserted into the SVD calculation.</p>
-<p>The method of normalization has a strong effect on any SVD calculation. In this approach, we normalize to the variance for each spectrum within the operating spectral segments.</p>
-<p>Calulate the eigenspectra and eigenvalues that characterize the residual emission line features.</p>
-<p>Using the previous steps, we have produced a set of spectra that are prepared for the Singular Value Decomposition, which cacluated the eigenspectra and the eigenvalues that create the entire set of input spectra. To use these eigenspectra effectively, the eigenmodes must be chosen to identify only the contributions by the sky residuals.</p>
+</div>
 </div>
 
 
@@ -416,15 +416,15 @@ data.</p>
 <li><a class="reference internal" href="#">Welcome to ZAP&#8217;s documentation!</a></li>
 <li><a class="reference internal" href="#examples">Examples</a><ul>
 <li><a class="reference internal" href="#sparse-field-case">Sparse Field Case</a></li>
-<li><a class="reference internal" href="#partially-filled-case">Partially Filled Case</a></li>
-<li><a class="reference internal" href="#pre-determined-zlevel-and-eigenspectra">Pre-determined zlevel and eigenspectra</a></li>
-<li><a class="reference internal" href="#saturated-field-case-and-time-series-sky">Saturated Field Case and Time Series Sky</a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#masked-processing">Masked Processing</a></li>
+<li><a class="reference internal" href="#filled-field-case">Filled Field Case</a><ul>
 <li><a class="reference internal" href="#top-level-functions">Top Level Functions</a></li>
 <li><a class="reference internal" href="#interactive-mode">Interactive mode</a></li>
 <li><a class="reference internal" href="#zclass">ZCLASS</a></li>
-<li><a class="reference internal" href="#algorithm-description">Algorithm description</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
   <h3>This Page</h3>
