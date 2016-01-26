@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
-            zlevel='median', q=0, cftype='weight', cfwidth=100, pevals=[],
+            zlevel='median', cftype='weight', cfwidth=100, pevals=[],
             nevals=[], optimizeType='normal', extSVD='', skycubefits='',
             interactive=False):
     """ Performs the entire ZAP sky subtraction algorithm.
@@ -74,8 +74,6 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     zlevel : str
         Method for the zeroth order sky removal: `none`, `sigclip` or `median`
         (default).
-    q : int
-        Number of quartiles to remove for the zlevel computation (default to 0)
     cftype : str
         Method for the continuum filter: `median` or `weight` (default). For
         the `weight` method, a zeroth order sky is required (see `zlevel`).
@@ -123,7 +121,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
         raise ValueError('Invalid value for optimizeType')
 
     zobj = zclass(musecubefits)
-    zobj._run(clean=clean, zlevel=zlevel, q=q, cfwidth=cfwidth, cftype=cftype,
+    zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidth, cftype=cftype,
               pevals=pevals, nevals=nevals, optimizeType=optimizeType,
               extSVD=extSVD)
 
@@ -135,9 +133,8 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     else:
         return zobj
 
-
 def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
-              zlevel='median', q=0, cftype='weight', cfwidth=300, mask=None):
+              zlevel='median', cftype='weight', cfwidth=300, mask=None):
     """ Performs the SVD decomposition of a datacube.
 
     This allows to use the SVD for a different datacube.
@@ -156,8 +153,6 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
     zlevel : str
         Method for the zeroth order sky removal: `none`, `sigclip` or `median`
         (default).
-    q : int
-        Number of quartiles to remove for the zlevel computation (default to 0)
     cftype : str
         Method for the continuum filter: `median` or `weight` (default). For
         the `weight` method, a zeroth order sky is required (see `zlevel`).
@@ -189,7 +184,7 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
 
     # remove the median along the spectral axis
     if zlevel.lower() != 'none':
-        zobj._zlevel(calctype=zlevel, q=q)
+        zobj._zlevel(calctype=zlevel)
 
     # remove the continuum level - this is multiprocessed to speed it up
     zobj._continuumfilter(cftype=cftype, cfwidth=cfwidth)
@@ -369,7 +364,6 @@ class zclass(object):
         # zlevel parameters
         self.run_zlevel = False
         self.zlsky = np.zeros(laxis.shape)
-        self.zlq = 0
 
         # Extraction results
         self.stack = np.array([])
@@ -420,7 +414,7 @@ class zclass(object):
         hdu.close()
 
     @timeit
-    def _run(self, clean=True, zlevel='median', q=0, cftype='weight',
+    def _run(self, clean=True, zlevel='median', cftype='weight',
              cfwidth=100, pevals=[], nevals=[], optimizeType='normal',
              extSVD=''):
         """ Perform all zclass to ZAP a datacube:
@@ -450,10 +444,9 @@ class zclass(object):
         # remove the median along the spectral axis
         if extSVD == '':
             if zlevel.lower() != 'none':
-                self._zlevel(calctype=zlevel, q=q)
+                self._zlevel(calctype=zlevel)
         else:
             self._externalzlevel(extSVD)
-            self.zlq = q
 
         # remove the continuum level - this is multiprocessed to speed it up
         self._continuumfilter(cfwidth=cfwidth, cftype=cftype)
@@ -518,7 +511,7 @@ class zclass(object):
         self.run_zlevel = 'extSVD'
 
     @timeit
-    def _zlevel(self, calctype='median', q=0):
+    def _zlevel(self, calctype='median'):
         """
         Removes a 'zero' level from each spectral plane. Spatial information is
         not required, so it operates on the extracted stack.
@@ -540,20 +533,7 @@ class zclass(object):
         if calctype != 'none':
             logger.info('Subtracting Zero Level')
 
-            # choose the included quartiles
-            q = int(q)
-            if q > 3:
-                q = 3
-            self.zlq = q
-            if q >= 1 and q <= 3:
-                logger.info('Removing the top %s quartiles from zlevel i'
-                            'calculation', self.zlq)
-                zlstack = self.stack.copy()
-                zlstack.sort(axis=1)
-                zlstack = zlstack[:, 0:zlstack.shape[1] *
-                                  (4 - self.zlq) * 0.25]
-            else:
-                zlstack = self.stack
+            zlstack = self.stack
 
             manager = multiprocessing.Manager()
             return_dict = manager.dict()
@@ -1214,9 +1194,6 @@ def _newheader(zobj):
     header.append(('ZAPvers', __version__, 'ZAP version'), end=True)
     # zlevel removal performed
     header.append(('ZAPzlvl', zobj.run_zlevel, 'ZAP zero level correction'))
-    # zlevel removal performed
-    header.append(('ZAPzlq', zobj.zlq,
-                   'ZAP quartiles used for zero level correction'))
     # Nanclean performed
     header['ZAPclean'] = (zobj.run_clean,
                           'ZAP NaN cleaning performed for calculation')
