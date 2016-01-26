@@ -23,7 +23,7 @@ import numpy as np
 import os
 import sys
 
-from astropy.io import fits as pyfits
+from astropy.io import fits
 from functools import wraps
 from scipy import ndimage as ndi
 from scipy.stats import sigmaclip
@@ -50,12 +50,58 @@ logger = logging.getLogger(__name__)
 ###############################################################################
 
 
-def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zlevel='median',
-            q=0, cftype='weight', cfwidth=100, pevals=[], nevals=[], optimizeType='normal',
-            extSVD='', skycubefits='', interactive=False):
-    """
-    Performs the entire ZAP sky subtraction algorithm on an input fits file
-    and writes the product to an output fits file.
+def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
+            zlevel='median', q=0, cftype='weight', cfwidth=100, pevals=[],
+            nevals=[], optimizeType='normal', extSVD='', skycubefits='',
+            interactive=False):
+    """ Performs the entire ZAP sky subtraction algorithm.
+
+    Work on an input FITS file and optionally writes the product to an output
+    FITS file.
+
+    Parameters
+    ----------
+
+    musecubefits : str
+        Input FITS file, containing a cube with data in the first extension.
+    outcubefits : str
+        Output FITS file, based on the input one to propagate all header
+        informations and other extensions. Default to DATACUBE_FINAL_ZAP.fits
+    clean : bool
+        If True (default value), the NaN values are cleaned. Spaxels with more
+        then 25% of NaN values are removed, the others are replaced with an
+        interpolation from the neighbors.
+    zlevel : str
+        Method for the zeroth order sky removal: `none`, `sigclip` or `median`
+        (default).
+    q : int
+        Number of quartiles to remove for the zlevel computation (default to 0)
+    cftype : str
+        Method for the continuum filter: `median` or `weight` (default). For
+        the `weight` method, a zeroth order sky is required (see `zlevel`).
+    cfwidth : int or float
+        Window size for the continuum filter, default to 100.
+    optimizeType : str
+        Optimization method to compute the number of eigenspectra used for each
+        segment: `none`, `normal` (default), `enhanced`. If `none`, the number
+        of eigenspectra must be specified with `nevals` or `pevals`, otherwise
+        `normal` is used.
+    pevals : list
+        Allow to specify the percentage of eigenspectra used for each segment.
+    nevals : list
+        Allow to specify the number of eigenspectra used for each segment.
+    extSVD : str
+        Path of an input FITS file containing a SVD computed by the
+        ``SVDoutput`` function. Otherwise the SVD is computed.
+    skycubefits : str
+        Path for the optional output of the sky that is subtracted from the
+        cube. This is simply the input cube minus the output cube.
+    interactive : bool
+        If True, an object containing all informations on the ZAP process is
+        returned, and can be used to explore the eigenspectra and recompute the
+        output (with the ``reprocess`` method). In this case, the output files
+        are not saved (`outcubefits` and `skycubefits` are ignored). Default to
+        False.
 
     """
     if not isinstance(musecubefits, string_types):
@@ -91,10 +137,34 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True, zle
 
 
 def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
-              zlevel='median', q=0, cftype='weight', cfwidth=300, mask=''):
-    """
-    Performs the SVD decomposition of the datacube for use in a different
-    datacube.
+              zlevel='median', q=0, cftype='weight', cfwidth=300, mask=None):
+    """ Performs the SVD decomposition of a datacube.
+
+    This allows to use the SVD for a different datacube.
+
+    Parameters
+    ----------
+
+    musecubefits : str
+        Input FITS file, containing a cube with data in the first extension.
+    svdfn : str
+        Output FITS file. Default to ZAP_SVD.fits
+    clean : bool
+        If True (default value), the NaN values are cleaned. Spaxels with more
+        then 25% of NaN values are removed, the others are replaced with an
+        interpolation from the neighbors.
+    zlevel : str
+        Method for the zeroth order sky removal: `none`, `sigclip` or `median`
+        (default).
+    q : int
+        Number of quartiles to remove for the zlevel computation (default to 0)
+    cftype : str
+        Method for the continuum filter: `median` or `weight` (default). For
+        the `weight` method, a zeroth order sky is required (see `zlevel`).
+    cfwidth : int or float
+        Window size for the continuum filter, default to 300.
+    mask : str
+        Path of a FITS file containing a mask (1 for objects, 0 for sky).
 
     """
     logger.info('Processing %s to compute the SVD', musecubefits)
@@ -111,7 +181,7 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
         zobj._nanclean()
 
     # if mask is supplied, apply it
-    if mask != '':
+    if mask is not None:
         zobj._applymask(mask)
 
     # Extract the spectra that we will be working with
@@ -132,20 +202,16 @@ def SVDoutput(musecubefits, svdfn='ZAP_SVD.fits', clean=True,
 
 
 def contsubfits(musecubefits, contsubfn='CONTSUB_CUBE.fits', cfwidth=300):
-    """
-    A multiprocessed implementation of the continuum removal. This process
-    distributes the data to many processes that then reassemble the data. Uses
-    two filters, a small scale (less than the line spread function) uniform
-    filter, and a large scale median filter to capture the structure of
-    a variety of continuum shapes.
+    """ A multiprocessed implementation of the continuum removal.
 
-    added to class
-    contarray - the removed continuua
-    normstack - "normalized" version of the stack with the continuua removed
+    This process distributes the data to many processes that then reassemble
+    the data. Uses two filters, a small scale (less than the line spread
+    function) uniform filter, and a large scale median filter to capture the
+    structure of a variety of continuum shapes.
 
     """
     check_file_exists(contsubfn)
-    hdu = pyfits.open(musecubefits)
+    hdu = fits.open(musecubefits)
     data = hdu[1].data
     stack = data.reshape(data.shape[0], (data.shape[1] * data.shape[2]))
     contarray = _cfmedian(stack, cfwidth=cfwidth)
@@ -165,7 +231,7 @@ def nancleanfits(musecubefits, outfn='NANCLEAN_CUBE.fits', rejectratio=0.25,
     the cube are retained in nancube for later remasking.
     """
     check_file_exists(outfn)
-    hdu = pyfits.open(musecubefits)
+    hdu = fits.open(musecubefits)
     cleancube = _nanclean(hdu[1].data, rejectratio=rejectratio, boxsz=boxsz)
     hdu[1].data = cleancube[0]
     hdu.writeto(outfn)
@@ -193,75 +259,75 @@ def timeit(func):
 
 class zclass(object):
 
+    """ Main class to run each of the steps of ZAP.
+
+    Attributes
+    ----------
+
+    cleancube : numpy.ndarray
+        The final datacube after removing all of the residual features.
+    contarray : numpy.ndarray
+        A 2D array containing the subtracted continuum per spaxel.
+    cube : numpy.ndarray
+        The original cube with the zlevel subtraction performed per spaxel.
+    especeval : list of (eigenspectra, eval)
+        A list containing the full set of eigenspectra and eigenvalues
+        generated by the SVD calculation that is used toy reconstruct the
+        entire datacube.
+    laxis : numpy.ndarray
+        A 1d array containing the wavelength solution generated from the header
+        parameters.
+    lparams : list
+        An array of parameters taken from the header to generate the wavelength
+        solution.
+    lranges : list
+        A list of the wavelength bin limits used in segmenting the sepctrum
+        for SVD.
+    lmin,lmax : float
+        The wavelength limits placed on the datacube.
+    nancube : numpy.ndarray
+        A 3d boolean datacube containing True in voxels where a NaN value was
+        replaced with an interpolation.
+    nevals : numpy.ndarray
+        A 1d array containing the number of eigenvalues used per segment to
+        reconstruct the residuals.
+    normstack : numpy.ndarray
+        A normalized version of the datacube decunstructed into a 2d array.
+    varlist : numpy.ndarray
+        An array for each segment with the variance curve, calculated for the
+        optimize method.
+    pranges : numpy.ndarray
+        The pixel indices of the bounding regions for each spectral segment.
+    recon : numpy.ndarray
+        A 2d array containing the reconstructed emission line residuals.
+    run_clean : bool
+        Boolean that indicates that the NaN cleaning method was used.
+    run_zlevel : bool
+        Boolean indicating that the zero level correction was used.
+    stack : numpy.ndarray
+        The datacube deconstructed into a 2d array for use in the the SVD.
+    subespeceval : list of (eigenspectra, eval)
+        The subset of eigenvalues and eigenspectra used to reconstruct the sky
+        residuals.
+    variancearray : numpy.ndarray
+        A list of length nsegments containing variances calculated per spaxel
+        used for normalization
+    y,x : numpy.ndarray
+        The position in the cube of the spaxels that are in the 2d
+        deconstructed stack
+    zlsky : numpy.ndarray
+        A 1d array containing the result of the zero level subtraction
+
     """
-    The zclass retains all methods and attributes to run each of the steps of ZAP.
 
-    Attributes:
-
-      cleancube - The final datacube after removing all of the residual features.
-
-      contarray - A 2d array containing the subtracted continuum per spaxel.
-
-      cube - The original data cube with the zlevel subtraction performed per spaxel.
-
-      especeval - A list containing the full set of eigenspectra and eigenvalues generated by the
-                     SVD calculation that is used toy reconstruct the entire datacube.
-
-      laxis - A 1d array containing the wavelength solution generated from the header
-                     parameters.
-
-      lparams - An array of parameters taken from the header to generate the wavelength solution.
-
-      lranges - A list of the wavelength bin limits used in segmenting the sepctrum for SVD.
-
-      lmin,lmax - the wavelength limits placed on the datacube
-
-      nancube - A 3d boolean datacube containing True in voxels where a NaN value was replaced
-                     with an interpolation.
-
-      nevals - A 1d array containing the number of eigenvalues used per segment to reconstruct
-                     the residuals.
-
-      normstack - A normalized version of the datacube decunstructed into a 2d array.
-
-      nsegments - The number of divisions in wavelength space that the cube is cut into in order
-                     to perform the SVD.
-
-      varlist - An array for each segment with the variance curve, calculated for the
-                    optimize method.
-
-      pranges - The pixel indices of the bounding regions for each spectral segment.
-
-      recon - A 2d array containing the reconstructed emission line residuals.
-
-      run_clean - Boolean that indicates that the NaN cleaning method was used.
-
-      run_zlevel - Boolean indicating that the zero level correction was used.
-
-      stack - The datacube deconstructed into a 2d array for use in the the SVD.
-
-      subespeceval - The subset of eigenvalues and eigenspectra used to reconstruct the sky
-                        residuals.
-
-      variancearray - A list of length nsegments containing variances calculated per spaxel used
-                        for normalization
-
-      y,x - The position in the cube of the spaxels that are in the 2d deconstructed stack
-
-      zlsky - A 1d array containing the result of the zero level subtraction
-
-
-
-    """
-
-    # setup the data structure
     def __init__(self, musecubefits):
-        """
-        Initialization of the zclass. Pulls the datacube into the class and
-        trims it based on the known optimal spectral range of MUSE.
-        """
+        """ Initialization of the zclass.
 
-        hdu = pyfits.open(musecubefits)
+        Pulls the datacube into the class and trims it based on the known
+        optimal spectral range of MUSE.
+
+        """
+        hdu = fits.open(musecubefits)
         cube = hdu[1].data
         header = hdu[1].header
 
@@ -271,7 +337,8 @@ class zclass(object):
 
         lparams = [header['NAXIS3'], header['CRVAL3'], header['CD3_3'],
                    header['CRPIX3']]
-        laxis = lparams[1] + lparams[2] * (np.arange(lparams[0]) + lparams[3] - 1)
+        laxis = lparams[1] + lparams[2] * (np.arange(lparams[0]) +
+                                           lparams[3] - 1)
 
         lmin = min(laxis)
         self.lmin = lmin
@@ -330,7 +397,6 @@ class zclass(object):
                                             skyseg <= laxmax)], laxmax + 10)]))
 
         self.lranges = lranges
-        # self.nsegments = len(lranges)
         self.lparams = [header['NAXIS3'], header['CRVAL3'], header['CD3_3'],
                         header['CRPIX3']]
 
@@ -357,14 +423,17 @@ class zclass(object):
     def _run(self, clean=True, zlevel='median', q=0, cftype='weight',
              cfwidth=100, pevals=[], nevals=[], optimizeType='normal',
              extSVD=''):
-        """
-        Perform all zclass to ZAP a datacube, including NaN re/masking,
-        deconstruction into "stacks", zerolevel subraction, continuum removal,
-        normalization, singular value decomposition, eigenvector selection,
-        residual reconstruction and subtraction, and data cube reconstruction.
+        """ Perform all zclass to ZAP a datacube:
 
-        Returns a "zclass" class that retains all of the data needed as the
-        routine progresses.
+        - NaN re/masking,
+        - deconstruction into "stacks",
+        - zerolevel subraction,
+        - continuum removal,
+        - normalization,
+        - singular value decomposition,
+        - eigenvector selection,
+        - residual reconstruction and subtraction,
+        - data cube reconstruction.
 
         """
         logger.info('Running ZAP %s !', __version__)
@@ -372,7 +441,7 @@ class zclass(object):
         self.optimizeType = optimizeType
 
         # clean up the nan values
-        if clean != False:
+        if clean:
             self._nanclean()
 
         # Extract the spectra that we will be working with
@@ -444,7 +513,7 @@ class zclass(object):
     def _externalzlevel(self, extSVD):
         """Remove the zero level from the extSVD file."""
         logger.info('Using external zlevel')
-        self.zlsky = pyfits.getdata(extSVD, 0)
+        self.zlsky = fits.getdata(extSVD, 0)
         self.stack -= self.zlsky[:, np.newaxis]
         self.run_zlevel = 'extSVD'
 
@@ -519,12 +588,12 @@ class zclass(object):
             logger.info('Skipping zlevel subtraction')
 
     def _continuumfilter(self, cfwidth=100, cftype='weight'):
-        """
-        A multiprocessed implementation of the continuum removal. This process
-        distributes the data to many processes that then reassemble the data.
-        Uses two filters, a small scale (less than the line spread function)
-        uniform filter, and a large scale median filter to capture the
-        structure of a variety of continuum shapes.
+        """ A multiprocessed implementation of the continuum removal.
+
+        This process distributes the data to many processes that then
+        reassemble the data.  Uses two filters, a small scale (less than the
+        line spread function) uniform filter, and a large scale median filter
+        to capture the structure of a variety of continuum shapes.
 
         added to class
         contarray - the removed continuua
@@ -551,8 +620,7 @@ class zclass(object):
 
     @timeit
     def _msvd(self):
-        """
-        Multiprocessed singular value decomposition.
+        """ Multiprocessed singular value decomposition.
 
         First the normstack is normalized per segment per spaxel by the
         variance.  Takes the normalized, spectral segments and distributes them
@@ -598,10 +666,9 @@ class zclass(object):
         self.especeval = return_dict.values()
 
     def chooseevals(self, nevals=[], pevals=[]):
-        """
-        Choose the number of eigenspectra/evals to use for reconstruction
+        """ Choose the number of eigenspectra/evals to use for reconstruction.
 
-        user supplies the number of eigen spectra to be used (neval) or the
+        User supplies the number of eigen spectra to be used (neval) or the
         percentage of the eigenspectra that were calculated (peval) from each
         spectral segment to be used.
 
@@ -677,9 +744,8 @@ class zclass(object):
 
     # stuff the stack back into a cube
     def remold(self):
-        """
-        Subtracts the reconstructed residuals and places the cleaned spectra
-        into the duplicated datacube.
+        """ Subtracts the reconstructed residuals and places the cleaned
+        spectra into the duplicated datacube.
         """
         logger.info('Applying correction and reshaping data product')
         self.cleancube = self.cube.copy()
@@ -700,9 +766,8 @@ class zclass(object):
 
     @timeit
     def optimize(self):
-        """
-        Function to optimize the number of components used to characterize the
-        residuals.
+        """ Function to optimize the number of components used to characterize
+        the residuals.
 
         This function calculates the variance per segment with an increasing
         number of eigenspectra/eigenvalues. It then deterimines the point at
@@ -776,8 +841,8 @@ class zclass(object):
     # #########################################################################
 
     def make_contcube(self):
-        # remold the continuum array so it can be investigated
-        """
+        """ Remold the continuum array so it can be investigated.
+
         Takes the continuum stack and returns it into a familiar cube form.
         """
         contcube = self.cube.copy() * np.nan
@@ -786,7 +851,7 @@ class zclass(object):
 
     def _externalSVD(self, extSVD):
         logger.info('Calculating eigenvalues for input eigenspectra')
-        hdu = pyfits.open(extSVD)
+        hdu = fits.open(extSVD)
         nseg = len(self.pranges)
 
         # normalize the variance in the segments
@@ -812,13 +877,13 @@ class zclass(object):
         """Apply a mask to the input data to provide a cleaner basis set.
 
         mask is >1 for objects, 0 for sky so that people can use sextractor.
-        The file is read with `astropy.io.fits.getdata` which first tries to
+        The file is read with ``astropy.io.fits.getdata`` which first tries to
         read the primary extension, then the first extension is no data was
         found before.
 
         """
         logger.info('Applying Mask for SVD Calculation from %s', mask)
-        mask = pyfits.getdata(mask).astype(bool)
+        mask = fits.getdata(mask).astype(bool)
         nmasked = np.count_nonzero(mask)
         logger.info('Masking %d pixels (%d%%)', nmasked,
                     nmasked / np.prod(mask.shape) * 100)
@@ -845,7 +910,7 @@ class zclass(object):
         outhead = _newheader(self)
 
         # create hdu and write
-        outhdu = pyfits.PrimaryHDU(data=outcube, header=outhead)
+        outhdu = fits.PrimaryHDU(data=outcube, header=outhead)
         outhdu.writeto(outcubefits)
         logger.info('Cube file saved to %s', outcubefits)
 
@@ -858,7 +923,7 @@ class zclass(object):
         outhead = _newheader(self)
 
         # create hdu and write
-        outhdu = pyfits.PrimaryHDU(data=outcube, header=outhead)
+        outhdu = fits.PrimaryHDU(data=outcube, header=outhead)
         outhdu.writeto(skycubefits)
         logger.info('Sky cube file saved to %s', skycubefits)
 
@@ -868,7 +933,7 @@ class zclass(object):
         # make sure it has the right extension
         outcubefits = outcubefits.split('.fits')[0] + '.fits'
         check_file_exists(outcubefits)
-        hdu = pyfits.open(self.musecubefits)
+        hdu = fits.open(self.musecubefits)
         hdu[1].header = _newheader(self)
         hdu[1].data = self._cubetowrite()
         hdu.writeto(outcubefits)
@@ -879,9 +944,9 @@ class zclass(object):
         """Write the SVD to an individual fits file."""
 
         check_file_exists(svdfn)
-        hdu = pyfits.HDUList([pyfits.PrimaryHDU(self.zlsky)])
+        hdu = fits.HDUList([fits.PrimaryHDU(self.zlsky)])
         for i in range(len(self.pranges)):
-            hdu.append(pyfits.ImageHDU(self.especeval[i][0]))
+            hdu.append(fits.ImageHDU(self.especeval[i][0]))
         # write for later use
         hdu.writeto(svdfn)
         logger.info('SVD file saved to %s', svdfn)
@@ -1000,12 +1065,12 @@ def wmedian(spec, wt, cfwidth=300):
 
 @timeit
 def _cfweight(stack, weight, cfwidth=300):
-    """
-    A multiprocessed implementation of the continuum removal. This process
-    distributes the data to many processes that then reassemble the data. Uses
-    two filters, a small scale (less than the line spread function) uniform
-    filter, and a large scale median filter to capture the structure of
-    a variety of continuum shapes.
+    """ A multiprocessed implementation of the continuum removal.
+
+    This process distributes the data to many processes that then reassemble
+    the data. Uses two filters, a small scale (less than the line spread
+    function) uniform filter, and a large scale median filter to capture the
+    structure of a variety of continuum shapes.
 
     added to class
     contarray - the removed continuua
@@ -1050,12 +1115,12 @@ def _icfmedian(i, stack, cfwidth, sprange, return_dict):
 
 @timeit
 def _cfmedian(stack, cfwidth=300):
-    """
-    A multiprocessed implementation of the continuum removal. This process
-    distributes the data to many processes that then reassemble the data. Uses
-    two filters, a small scale (less than the line spread function) uniform
-    filter, and a large scale median filter to capture the structure of
-    a variety of continuum shapes.
+    """ A multiprocessed implementation of the continuum removal.
+
+    This process distributes the data to many processes that then reassemble
+    the data. Uses two filters, a small scale (less than the line spread
+    function) uniform filter, and a large scale median filter to capture the
+    structure of a variety of continuum shapes.
 
     added to class
     contarray - the removed continuua
