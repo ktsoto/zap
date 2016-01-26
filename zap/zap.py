@@ -18,7 +18,7 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
-import multiprocessing
+import multiprocessing as mp
 import numpy as np
 import os
 import sys
@@ -31,6 +31,7 @@ from time import time
 
 from .version import __version__
 
+NCPU = mp.cpu_count()
 PY2 = sys.version_info[0] == 2
 
 if not PY2:
@@ -237,7 +238,7 @@ def contsubfits(musecubefits, contsubfn='CONTSUB_CUBE.fits', cfwidth=300):
     hdu = fits.open(musecubefits)
     data = hdu[1].data
     stack = data.reshape(data.shape[0], (data.shape[1] * data.shape[2]))
-    contarray = _cfmedian(stack, cfwidth=cfwidth)
+    contarray = _continuumfilter(stack, 'median', cfwidth=cfwidth)
 
     # remove continuum features
     stack -= contarray
@@ -563,14 +564,6 @@ class zclass(object):
 
             zlstack = self.stack
 
-            manager = multiprocessing.Manager()
-            return_dict = manager.dict()
-            jobs = []
-            # choose some arbitrary number of processes
-            nseg = multiprocessing.cpu_count()
-            pranges = np.linspace(self.pranges.min(), self.pranges.max(),
-                                  nseg + 1, dtype=int)
-
             if calctype == 'median':
                 logger.info('Median zlevel calculation')
                 func = _imedian
@@ -578,19 +571,7 @@ class zclass(object):
                 logger.info('Iterative Sigma Clipping zlevel calculation')
                 func = _isigclip
 
-            # multiprocess the zlevel calculation, operating per segment
-            for i in range(nseg):
-                istack = zlstack[pranges[i]:pranges[i + 1], :]
-                p = multiprocessing.Process(target=func,
-                                            args=(i, istack, return_dict))
-                jobs.append(p)
-                p.start()
-
-            # gather the results
-            for proc in jobs:
-                proc.join()
-
-            self.zlsky = np.hstack(return_dict.values())
+            self.zlsky = np.hstack(parallel_map(func, zlstack, NCPU, axis=0))
             self.stack -= self.zlsky[:, np.newaxis]
         else:
             logger.info('Skipping zlevel subtraction')
@@ -617,13 +598,13 @@ class zclass(object):
         self._cfwidth = cfwidth
 
         if cftype == 'median':
-            self.contarray = _cfmedian(self.stack, cfwidth=self._cfwidth)
+            weight = None
         elif cftype == 'weight':
             weight = np.abs(self.zlsky - (np.max(self.zlsky) + 1))
-            self.contarray = _cfweight(self.stack, weight,
-                                       cfwidth=self._cfwidth)
 
         # remove continuum features
+        self.contarray = _continuumfilter(self.stack, cftype, weight=weight,
+                                          cfwidth=cfwidth)
         self.normstack = self.stack - self.contarray
 
     @timeit
@@ -637,41 +618,18 @@ class zclass(object):
         """
         logger.info('Calculating SVD')
 
-        # split the range
-        nseg = len(self.pranges)
-
         # normalize the variance in the segments
-        self.variancearray = np.zeros((nseg, self.stack.shape[1]))
+        nseg = len(self.pranges)
+        self.variancearray = var = np.zeros((nseg, self.stack.shape[1]))
 
         for i in range(nseg):
             pmin, pmax = self.pranges[i]
-            self.variancearray[i, :] = np.var(self.normstack[pmin:pmax, :],
-                                              axis=0)
-            self.normstack[pmin:pmax, :] /= self.variancearray[i, :]
+            var[i, :] = np.var(self.normstack[pmin:pmax, :], axis=0)
+            self.normstack[pmin:pmax, :] /= var[i, :]
 
         logger.debug('Beginning SVD on %d segments', nseg)
-
-        # for receiving results of processes
-        manager = multiprocessing.Manager()
-        return_dict = manager.dict()
-        jobs = []
-
-        # multiprocess the svd calculation, operating per segment
-        for i in range(nseg):
-            p = multiprocessing.Process(target=_isvd, args=(
-                i, self.pranges[i], self.normstack, return_dict))
-            jobs.append(p)
-            p.start()
-
-        # gather the results
-        for proc in jobs:
-            proc.join()
-
-        if len(return_dict) < nseg:
-            raise Exception('Missing segments, finished: {}, exitcode: %s'
-                            .format(return_dict.keys(),
-                                    [proc.exitcode for proc in jobs]))
-        self.especeval = return_dict.values()
+        indices = [x[0] for x in self.pranges[1:]]
+        self.especeval = parallel_map(_isvd, self.normstack, indices, axis=0)
 
     def chooseevals(self, nevals=[], pevals=[]):
         """ Choose the number of eigenspectra/evals to use for reconstruction.
@@ -786,29 +744,12 @@ class zclass(object):
         """
         logger.info('Optimizing')
 
-        nseg = len(self.especeval)
         normstack = self.stack - self.contarray
-
-        # for receiving results of processes
-        manager = multiprocessing.Manager()
-        return_dict = manager.dict()
-
-        jobs = []
-
-        # multiprocess the variance calculation, operating per segment
-        for i in range(nseg):
-            p = multiprocessing.Process(target=_ivarcurve, args=(
-                i, normstack[self.pranges[i, 0]:self.pranges[i, 1], :],
-                self.especeval[i], self.variancearray[i], return_dict))
-            jobs.append(p)
-            p.start()
-
-        # gather the results
-        for proc in jobs:
-            proc.join()
-
-        self.varlist = np.array(return_dict.values())
+        nseg = len(self.especeval)
         self.nevals = np.zeros(nseg, dtype=int)
+        indices = [x[0] for x in self.pranges[1:]]
+        self.varlist = parallel_map(_ivarcurve, normstack, indices,
+                                    self.especeval, self.variancearray, axis=0)
 
         if self.optimizeType == 'enhanced':
             logger.info('Enhanced Optimization')
@@ -817,9 +758,10 @@ class zclass(object):
 
         for i in range(nseg):
             # optimize
-            deriv = (np.roll(self.varlist[i], -1) - self.varlist[i])[:-1]
-            deriv2 = (np.roll(deriv, -1) - deriv)[:-1]
-            noptpix = self.varlist[i].size
+            varlist = self.varlist[i]
+            deriv = varlist[1:] - varlist[:-1]
+            deriv2 = deriv[1:] - deriv[:-1]
+            noptpix = varlist.size
 
             if self.optimizeType != 'enhanced':
                 # statistics on the derivatives
@@ -1017,19 +959,57 @@ class zclass(object):
 ###############################################################################
 
 
+def parallel_map(func, arr, indices, *args, **kwargs):
+    manager = mp.Manager()
+    return_dict = manager.dict()
+    jobs = []
+    axis = kwargs.pop('axis', None)
+    chunks = np.array_split(arr, indices, axis=axis)
+
+    for i, chunk in enumerate(chunks):
+        p = mp.Process(target=func, kwargs=kwargs,
+                       args=[i, chunk, return_dict] + list(args))
+        jobs.append(p)
+        p.start()
+
+    # gather the results
+    for proc in jobs:
+        proc.join()
+
+    if len(return_dict) < len(chunks):
+        raise Exception('Missing segments, finished: {}'
+                        .format(return_dict.keys()))
+    return return_dict.values()
+
+
 ##### Continuum Filtering #####
+
+@timeit
+def _continuumfilter(stack, cftype, weight=None, cfwidth=300):
+    if cftype == 'median':
+        func = _icfmedian
+        weight = None
+    elif cftype == 'weight':
+        func = _icfweight
+    c = parallel_map(func, stack, NCPU, axis=1, weight=weight, cfwidth=cfwidth)
+    return np.concatenate(c, axis=1)
+
+
+def _icfweight(i, stack, return_dict, weight=None, cfwidth=None):
+    return_dict[i] = np.array([wmedian(row, weight, cfwidth=cfwidth)
+                               for row in stack.T]).T
+
+
+def _icfmedian(i, stack, return_dict, weight=None, cfwidth=None):
+    ufilt = 3  # set this to help with extreme over/under corrections
+    return_dict[i] = ndi.median_filter(
+        ndi.uniform_filter(stack, (ufilt, 1)), (cfwidth, 1))
+
 
 def rolling_window(a, window):  # function for striding to help speed up
     shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
     strides = a.strides + (a.strides[-1],)
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
-
-
-def _icfweight(i, stack, wt, cfwidth, sprange, return_dict):
-    istack = np.rollaxis(stack[:, sprange[0]:sprange[1]], 1)
-    result = np.rollaxis(np.array([wmedian(row, wt, cfwidth=cfwidth)
-                                   for row in istack]), 1)
-    return_dict[i] = result
 
 
 def wmedian(spec, wt, cfwidth=300):
@@ -1071,99 +1051,9 @@ def wmedian(spec, wt, cfwidth=300):
     return wmed
 
 
-@timeit
-def _cfweight(stack, weight, cfwidth=300):
-    """ A multiprocessed implementation of the continuum removal.
-
-    This process distributes the data to many processes that then reassemble
-    the data. Uses two filters, a small scale (less than the line spread
-    function) uniform filter, and a large scale median filter to capture the
-    structure of a variety of continuum shapes.
-
-    added to class
-    contarray - the removed continuua
-    normstack - "normalized" version of the stack with the continuua removed
-
-    """
-    logger.debug('Continuum Subtracting - weighted median filter method')
-    nmedpieces = multiprocessing.cpu_count()
-
-    # define bins
-    edges = np.linspace(0, stack.shape[1], nmedpieces+1, dtype=int)
-    medianranges = np.vstack((edges[:-1], edges[1:])).T
-
-    # for receiving results of processes
-    manager = multiprocessing.Manager()
-    return_dict = manager.dict()
-    jobs = []
-
-    # multiprocess the variance calculation, operating per segment
-    for i in range(len(medianranges)):
-        p = multiprocessing.Process(target=_icfweight, args=(
-            i, stack, weight, cfwidth, medianranges[i], return_dict))
-        jobs.append(p)
-        p.start()
-
-    # gather the results
-    for proc in jobs:
-        proc.join()
-
-    return np.concatenate(return_dict, axis=1)
-
-
-def _icfmedian(i, stack, cfwidth, sprange, return_dict):
-    """
-    Helper function to distribute data to Pool for SVD
-    """
-    ufilt = 3  # set this to help with extreme over/under corrections
-    return_dict[i] = ndi.median_filter(
-        ndi.uniform_filter(stack[:, sprange[0]:sprange[1]],
-                           (ufilt, 1)), (cfwidth, 1))
-
-
-@timeit
-def _cfmedian(stack, cfwidth=300):
-    """ A multiprocessed implementation of the continuum removal.
-
-    This process distributes the data to many processes that then reassemble
-    the data. Uses two filters, a small scale (less than the line spread
-    function) uniform filter, and a large scale median filter to capture the
-    structure of a variety of continuum shapes.
-
-    added to class
-    contarray - the removed continuua
-    normstack - "normalized" version of the stack with the continuua removed
-
-    """
-    logger.debug('Continuum Subtracting - median filter method')
-    nmedpieces = multiprocessing.cpu_count()
-
-    # define bins
-    edges = np.linspace(0, stack.shape[1], nmedpieces+1, dtype=int)
-    medianranges = np.vstack((edges[:-1], edges[1:])).T
-
-    # for receiving results of processes
-    manager = multiprocessing.Manager()
-    return_dict = manager.dict()
-    jobs = []
-
-    # multiprocess the variance calculation, operating per segment
-    for i in range(len(medianranges)):
-        p = multiprocessing.Process(target=_icfmedian, args=(
-            i, stack, cfwidth, medianranges[i], return_dict))
-        jobs.append(p)
-        p.start()
-
-    # gather the results
-    for proc in jobs:
-        proc.join()
-
-    return np.concatenate(return_dict, axis=1)
-
-
 # ### SVD #####
 
-def _isvd(i, prange, normstack, return_dict):
+def _isvd(i, normstack, return_dict):
     """
     Perform single value decomposition and Calculate PC amplitudes (projection)
     outputs are eigenspectra operates on a 2D array.
@@ -1173,7 +1063,7 @@ def _isvd(i, prange, normstack, return_dict):
     data = [nbins, nobj]
     """
 
-    inormstack = normstack[prange[0]:prange[1], :].T
+    inormstack = normstack.T
     U, s, V = np.linalg.svd(inormstack, full_matrices=0)
     eigenspectra = np.transpose(V)
     evals = inormstack.dot(eigenspectra)
@@ -1184,7 +1074,7 @@ def _isvd(i, prange, normstack, return_dict):
 # ### OPTIMIZE #####
 
 
-def _ivarcurve(i, istack, iespeceval, ivariancearray, return_dict):
+def _ivarcurve(i, istack, return_dict, especeval, variancearray):
     """
     Reconstruct the residuals from a given set of eigenspectra and eigenvalues.
 
@@ -1194,7 +1084,7 @@ def _ivarcurve(i, istack, iespeceval, ivariancearray, return_dict):
     """
 
     iprecon = np.zeros_like(istack)
-    eigenspectra, evals = iespeceval
+    eigenspectra, evals = especeval[i]
     ivarlist = []
     totalnevals = int(np.round(evals.shape[0] * 0.25))
 
@@ -1208,7 +1098,7 @@ def _ivarcurve(i, istack, iespeceval, ivariancearray, return_dict):
         # broadcast evals on evects and sum
         iprecon += (eig[:, np.newaxis] * ev[np.newaxis, :])
 
-        icleanstack = istack - (iprecon * ivariancearray)
+        icleanstack = istack - (iprecon * variancearray[i])
         # calculate the variance on the cleaned segment
         ivarlist.append(np.var(icleanstack))
 
@@ -1277,11 +1167,6 @@ def _nanclean(cube, rejectratio=0.25, boxsz=1):
                 np.count_nonzero(badmask), rejectratio * 100)
 
     # make cube mask of bad spaxels
-    # y, x = np.where(badmap > (rejectratio * cleancube.shape[0]))
-    # bcube = np.ones(cleancube.shape, dtype=bool)
-    # bcube[:, y, x] = False
-    # badcube = np.logical_and(badcube == True, bcube == True)  # combine masking
-
     badcube &= (~badmask[np.newaxis, :, :])
     z, y, x = np.where(badcube)
 
