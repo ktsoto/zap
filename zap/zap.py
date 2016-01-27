@@ -18,20 +18,20 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
-import multiprocessing as mp
 import numpy as np
 import os
 import sys
 
 from astropy.io import fits
 from functools import wraps
+from multiprocessing import cpu_count, Manager, Process
 from scipy import ndimage as ndi
 from scipy.stats import sigmaclip
 from time import time
 
 from .version import __version__
 
-NCPU = mp.cpu_count()
+NCPU = cpu_count()
 PY2 = sys.version_info[0] == 2
 
 if not PY2:
@@ -748,8 +748,9 @@ class zclass(object):
         nseg = len(self.especeval)
         self.nevals = np.zeros(nseg, dtype=int)
         indices = [x[0] for x in self.pranges[1:]]
-        self.varlist = parallel_map(_ivarcurve, normstack, indices,
-                                    self.especeval, self.variancearray, axis=0)
+        self.varlist = parallel_map(_ivarcurve, normstack, indices, axis=0,
+                                    especeval=self.especeval,
+                                    variancearray=self.variancearray)
 
         if self.optimizeType == 'enhanced':
             logger.info('Enhanced Optimization')
@@ -959,16 +960,27 @@ class zclass(object):
 ###############################################################################
 
 
-def parallel_map(func, arr, indices, *args, **kwargs):
-    manager = mp.Manager()
-    return_dict = manager.dict()
+def worker(f, i, chunk, out_q, err_q, kwargs):
+    try:
+        result = f(i, chunk, **kwargs)
+    except Exception as e:
+        err_q.put(e)
+        return
+
+    # output the result and task ID to output queue
+    out_q.put((i, result))
+
+
+def parallel_map(func, arr, indices, **kwargs):
+    manager = Manager()
+    out_q = manager.Queue()
+    err_q = manager.Queue()
     jobs = []
     axis = kwargs.pop('axis', None)
     chunks = np.array_split(arr, indices, axis=axis)
 
     for i, chunk in enumerate(chunks):
-        p = mp.Process(target=func, kwargs=kwargs,
-                       args=[i, chunk, return_dict] + list(args))
+        p = Process(target=worker, args=(func, i, chunk, out_q, err_q, kwargs))
         jobs.append(p)
         p.start()
 
@@ -976,10 +988,18 @@ def parallel_map(func, arr, indices, *args, **kwargs):
     for proc in jobs:
         proc.join()
 
-    if len(return_dict) < len(chunks):
-        raise Exception('Missing segments, finished: {}'
-                        .format(return_dict.keys()))
-    return return_dict.values()
+    if not err_q.empty():
+        # kill all on any exception from any one slave
+        raise err_q.get()
+
+    # Processes finish in arbitrary order. Process IDs double
+    # as index in the resultant array.
+    results = [None] * len(jobs)
+    while not out_q.empty():
+        idx, result = out_q.get()
+        results[idx] = result
+
+    return results
 
 
 ##### Continuum Filtering #####
@@ -995,14 +1015,14 @@ def _continuumfilter(stack, cftype, weight=None, cfwidth=300):
     return np.concatenate(c, axis=1)
 
 
-def _icfweight(i, stack, return_dict, weight=None, cfwidth=None):
-    return_dict[i] = np.array([wmedian(row, weight, cfwidth=cfwidth)
-                               for row in stack.T]).T
+def _icfweight(i, stack, weight=None, cfwidth=None):
+    return np.array([wmedian(row, weight, cfwidth=cfwidth)
+                     for row in stack.T]).T
 
 
-def _icfmedian(i, stack, return_dict, weight=None, cfwidth=None):
+def _icfmedian(i, stack, weight=None, cfwidth=None):
     ufilt = 3  # set this to help with extreme over/under corrections
-    return_dict[i] = ndi.median_filter(
+    return ndi.median_filter(
         ndi.uniform_filter(stack, (ufilt, 1)), (cfwidth, 1))
 
 
@@ -1053,7 +1073,7 @@ def wmedian(spec, wt, cfwidth=300):
 
 # ### SVD #####
 
-def _isvd(i, normstack, return_dict):
+def _isvd(i, normstack):
     """
     Perform single value decomposition and Calculate PC amplitudes (projection)
     outputs are eigenspectra operates on a 2D array.
@@ -1067,14 +1087,14 @@ def _isvd(i, normstack, return_dict):
     U, s, V = np.linalg.svd(inormstack, full_matrices=0)
     eigenspectra = np.transpose(V)
     evals = inormstack.dot(eigenspectra)
-    return_dict[i] = [eigenspectra, evals.T]
     logger.info('Finished SVD Segment %d', i)
+    return [eigenspectra, evals.T]
 
 
 # ### OPTIMIZE #####
 
 
-def _ivarcurve(i, istack, return_dict, especeval, variancearray):
+def _ivarcurve(i, istack, especeval=None, variancearray=None):
     """
     Reconstruct the residuals from a given set of eigenspectra and eigenvalues.
 
@@ -1102,7 +1122,7 @@ def _ivarcurve(i, istack, return_dict, especeval, variancearray):
         # calculate the variance on the cleaned segment
         ivarlist.append(np.var(icleanstack))
 
-    return_dict[i] = np.array(ivarlist)
+    return np.array(ivarlist)
 
 
 def _newheader(zobj):
@@ -1135,16 +1155,16 @@ def _newheader(zobj):
     return header
 
 
-def _isigclip(i, istack, return_dict):
+def _isigclip(i, istack):
     mn = []
     for col in istack:
         clipped, bot, top = sigmaclip(col, low=3, high=3)
         mn.append(clipped.mean())
-    return_dict[i] = np.array(mn)
+    return np.array(mn)
 
 
-def _imedian(i, istack, return_dict):
-    return_dict[i] = np.median(istack, axis=1)
+def _imedian(i, istack):
+    return np.median(istack, axis=1)
 
 
 @timeit
