@@ -23,6 +23,7 @@ import os
 import sys
 
 from astropy.io import fits
+from astropy.wcs import WCS
 from functools import wraps
 from multiprocessing import cpu_count, Manager, Process
 from scipy import ndimage as ndi
@@ -30,6 +31,9 @@ from scipy.stats import sigmaclip
 from time import time
 
 from .version import __version__
+
+# Limits if the segments in Angstroms
+SKYSEG = [0, 5400, 5850, 6440, 6750, 7200, 7700, 8265, 8602, 8731, 9275, 10000]
 
 NCPU = cpu_count()
 PY2 = sys.version_info[0] == 2
@@ -117,7 +121,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     check_file_exists(outcubefits)
     check_file_exists(skycubefits)
     check_file_exists(svdoutputfits)
-    
+
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
         raise ValueError('Weighted median requires a zlevel calculation')
@@ -147,7 +151,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
                 zobj.writeSVD(svdoutputfits=svdoutputfits)
 
     else:
-        
+
         zobj = zclass(musecubefits)
         zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidthSP,
                   cftype=cftype, pevals=pevals, nevals=nevals,
@@ -301,14 +305,11 @@ class zclass(object):
     laxis : numpy.ndarray
         A 1d array containing the wavelength solution generated from the header
         parameters.
-    lparams : list
-        An array of parameters taken from the header to generate the wavelength
-        solution.
+    wcs : astropy.wcs.WCS
+        WCS object with the wavelength solution.
     lranges : list
         A list of the wavelength bin limits used in segmenting the sepctrum
         for SVD.
-    lmin,lmax : float
-        The wavelength limits placed on the datacube.
     nancube : numpy.ndarray
         A 3d boolean datacube containing True in voxels where a NaN value was
         replaced with an interpolation.
@@ -352,37 +353,15 @@ class zclass(object):
 
         """
         hdu = fits.open(musecubefits)
-        cube = hdu[1].data
-        header = hdu[1].header
-
+        self.cube = hdu[1].data
+        self.header = header = hdu[1].header
         self.musecubefits = musecubefits
+        hdu.close()
 
-        self.header = header
-
-        lparams = [header['NAXIS3'], header['CRVAL3'], header['CD3_3'],
-                   header['CRPIX3']]
-        laxis = lparams[1] + lparams[2] * (np.arange(lparams[0]) +
-                                           lparams[3] - 1)
-
-        lmin = min(laxis)
-        self.lmin = lmin
-        lmax = max(laxis)
-        self.lmax = lmax
-
-        wlaxis = np.where(np.logical_and(laxis >= lmin, laxis <= lmax))[0]
-        wlmin = min(wlaxis)
-        wlmax = max(wlaxis)
-        self._wlmin = wlmin
-        self._wlmax = wlmax
-
-        laxis = laxis[wlmin:wlmax + 1]
-        self.cubetrimb = cube[:wlmin, :, :]  # save the trimmings
-        self.cubetrimr = cube[wlmax + 1:, :, :]
-
-        cube = cube[wlmin:wlmax + 1, :, :]  # cut off the unusable bits
-        self.cube = cube
-
-        self.laxis = laxis
+        self.wcs = WCS(header).sub(['spectral'])
+        wlaxis = np.arange(self.cube.shape[0])
+        # Lambda axis in angstroms (wcslib works in meters)
+        self.laxis = self.wcs.all_pix2world(wlaxis, 0)[0] / 1e-10
 
         # NaN Cleaning
         self.run_clean = False
@@ -392,55 +371,47 @@ class zclass(object):
 
         # zlevel parameters
         self.run_zlevel = False
-        self.zlsky = np.zeros(laxis.shape)
+        self.zlsky = np.zeros_like(self.laxis)
 
         # Extraction results
-        self.stack = np.array([])
-        self.y = np.array([])
-        self.x = np.array([])
+        self.stack = None
+        self.y = None
+        self.x = None
 
         # Normalization Maps
-        self.contarray = np.array([])
-        self.variancearray = np.array([])
-        self.normstack = np.array([])
-
-        # List of segmentation limits in the optical
-        skyseg = np.array([0, 5400, 5850, 6440, 6750, 7200, 7700, 8265, 8602,
-                           8731, 9275, 10000])
+        self.contarray = None
+        self.variancearray = None
+        self.normstack = None
 
         # identify the spectral range of the dataset
-        laxmin = min(laxis)
-        laxmax = max(laxis)
+        laxmin = min(self.laxis)
+        laxmax = max(self.laxis)
 
-        # select the appropriate limits add a few Angstroms for padding
-        lranges = np.transpose(np.vstack([
-            np.append(laxmin - 10, skyseg[np.logical_and(skyseg >= laxmin,
-                                                         skyseg <= laxmax)]),
-            np.append(skyseg[np.logical_and(skyseg >= laxmin,
-                                            skyseg <= laxmax)], laxmax + 10)]))
+        # List of segmentation limits in the optical
+        skyseg = np.array(SKYSEG)
+        skyseg = skyseg[(skyseg > laxmin) & (skyseg < laxmax)]
 
-        self.lranges = lranges
-        self.lparams = [header['NAXIS3'], header['CRVAL3'], header['CD3_3'],
-                        header['CRPIX3']]
+        # segment limit in angstroms
+        self.lranges = (np.vstack([np.append(laxmin - 10, skyseg),
+                                   np.append(skyseg, laxmax + 10)])).T
 
-        paxis = np.arange(len(laxis))
+        # segment limit in pixels
+        laxis = self.laxis
+        lranges = self.lranges
         pranges = []
         for i in range(len(lranges)):
-            lrangelogical = np.logical_and(laxis > lranges[i, 0], laxis <= lranges[i, 1])
-            pranges.append((np.min(paxis[lrangelogical]), np.max(paxis[lrangelogical]) + 1))
-
+            paxis = wlaxis[(laxis > lranges[i, 0]) & (laxis <= lranges[i, 1])]
+            pranges.append((np.min(paxis), np.max(paxis) + 1))
         self.pranges = np.array(pranges)
 
-        self.especeval = []
-
         # eigenspace Subset
+        self.especeval = []
         self.subespeceval = []
 
         # Reconstruction of sky features
-        self.recon = np.array([])
-        self.cleancube = np.array([])
-        self.varlist = np.array([])  # container for variance curves
-        hdu.close()
+        self.recon = None
+        self.cleancube = None
+        self.varlist = None  # container for variance curves
 
     @timeit
     def _run(self, clean=True, zlevel='median', cftype='weight',
@@ -844,24 +815,15 @@ class zclass(object):
     ##################################### Output Functions ####################
     ###########################################################################
 
-    def _cubetowrite(self):
-        return np.concatenate((self.cubetrimb, self.cleancube, self.cubetrimr),
-                              axis=0)
-
-    def _skycubetowrite(self):
-        return np.concatenate((self.cubetrimb, self.cube - self.cleancube,
-                               self.cubetrimr), axis=0)
-
     def writecube(self, outcubefits='DATACUBE_ZAP.fits'):
         """Write the processed datacube to an individual fits file."""
 
         check_file_exists(outcubefits)
         # fix up for writing
-        outcube = self._cubetowrite()
         outhead = _newheader(self)
 
         # create hdu and write
-        outhdu = fits.PrimaryHDU(data=outcube, header=outhead)
+        outhdu = fits.PrimaryHDU(data=self.cleancube, header=outhead)
         outhdu.writeto(outcubefits)
         logger.info('Cube file saved to %s', outcubefits)
 
@@ -870,7 +832,7 @@ class zclass(object):
 
         check_file_exists(skycubefits)
         # fix up for writing
-        outcube = self._skycubetowrite()
+        outcube = self.cube - self.cleancube
         outhead = _newheader(self)
 
         # create hdu and write
@@ -886,7 +848,7 @@ class zclass(object):
         check_file_exists(outcubefits)
         hdu = fits.open(self.musecubefits)
         hdu[1].header = _newheader(self)
-        hdu[1].data = self._cubetowrite()
+        hdu[1].data = self.cleancube
         hdu.writeto(outcubefits)
         hdu.close()
         logger.info('Cube file saved to %s', outcubefits)
@@ -1146,8 +1108,7 @@ def _newheader(zobj):
     # per segment variables
     for i in range(nseg):
         header['ZAPseg{0}'.format(i)] = (
-            '{0}:{1}'.format(zobj._wlmin + zobj.pranges[i][0],
-                             zobj._wlmin + zobj.pranges[i][1] - 1),
+            '{0}:{1}'.format(zobj.pranges[i][0], zobj.pranges[i][1] - 1),
             'spectrum segment (pixels)')
         header['ZAPnev{0}'.format(i)] = (zobj.nevals[i],
                                          'number of eigenvals/spectra used')
