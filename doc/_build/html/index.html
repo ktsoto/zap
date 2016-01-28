@@ -47,7 +47,20 @@
 <ul class="simple">
 </ul>
 </div>
-<p>ZAP (the Zurich Atmosphere Purge) is a high precision sky subtraction tool which can be used as complete sky subtraction solution, or as an enhancement to previously sky-subtracted data.  <strong>Currently, the best results come from applying ZAP to a datacube with no initial sky subtraction.</strong> The method uses PCA to isolate the residual sky subtraction features and remove them from the observed datacube. Though the operation of ZAP is not dependent on perfect flatfielding of the data in a MUSE exposure, better results are obtained when these corrections are made ahead of time.</p>
+<p>ZAP (the Zurich Atmosphere Purge) is a high precision sky subtraction tool which can be used as complete sky subtraction solution, or as an enhancement to previously sky-subtracted data.  The method uses PCA to isolate the residual sky subtraction features and remove them from the observed datacube. Though the operation of ZAP is not dependent on perfect flatfielding of the data in a MUSE exposure, better results are obtained when these corrections are made ahead of time.</p>
+</div>
+<div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<p>ZAP requires the following packages:</p>
+<ul class="simple">
+<li>Numpy 1.6.0 or later</li>
+<li>Astropy v1.0 or later</li>
+<li>SciPy v0.13.3 or later</li>
+</ul>
+<p>Many linear algebra operations are performed in ZAP, so it can be beneficial to use an alternative BLAS package. In the Anaconda distribution, the default BLAS comes with numpy linked to OpenBlas, which can amount to a 20% speedup of ZAP.</p>
+</div>
 </div>
 <div class="section" id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
@@ -100,24 +113,29 @@ uniform filter. The &#8216;weight&#8217; option provides a better result, but is
 slower (an additional 10 minutes on a single exposure) and should only be
 run in the complete sky subtraction case.</td>
 </tr>
-<tr class="row-even"><td>cfwidth</td>
+<tr class="row-even"><td>cfwidthSP</td>
 <td>100</td>
-<td>Size of the filterbox used to remove the continuum features in order to
-sterilize the basis set used to calculate the eigenbasis.</td>
+<td>Size of the filterbox used to remove the continuum features for creating the
+eigenbasis.</td>
 </tr>
-<tr class="row-odd"><td>optimize</td>
+<tr class="row-odd"><td>cfwidthEV</td>
+<td>50</td>
+<td>Size of the filterbox used to remove the continuum features for calculating
+the eigenvalues per spectrum</td>
+</tr>
+<tr class="row-even"><td>optimize</td>
 <td>&#8216;normal&#8217;</td>
 <td>A flag used to call the optimization method. The possible options are
 &#8216;normal&#8217;, &#8216;enhanced&#8217;, and &#8216;none&#8217;.</td>
 </tr>
-<tr class="row-even"><td>nevals</td>
+<tr class="row-odd"><td>nevals</td>
 <td>[]</td>
 <td>This option is used for the manual selection of the the number of eigenvectors
 to be used. If this is used, the pevals is ignored. Provide either a single
 value that will be used for all of the segments, or a list of 11 values that
 will be used for each of the segments.</td>
 </tr>
-<tr class="row-odd"><td>pevals</td>
+<tr class="row-even"><td>pevals</td>
 <td>[]</td>
 <td>This option is used for the manual selection of the the number of eigenvectors
 to be used. This value is the percentage of the calculated
@@ -125,20 +143,20 @@ eigenspectra/eigenvalues used per spectral segment. Provide either a single
 value that will be used for all of the segments, or a list of 11 values that
 will be used for each of the segments.</td>
 </tr>
-<tr class="row-even"><td>extSVD</td>
+<tr class="row-odd"><td>extSVD</td>
 <td>&#8216;&#8217;</td>
 <td>An optional parameter that allows the input of a externally calculated
 eigenbasis as well as a zlevel. This can be constructed from either a masked
 version of a sparse field case, or an external sky frame.</td>
 </tr>
-<tr class="row-odd"><td>mask</td>
+<tr class="row-even"><td>mask</td>
 <td>&#8216;&#8217;</td>
 <td>A 2D fits image to exclude regions that may contaminate the zlevel or
 eigenspectra. This image should be constructed from the datacube itself to
 match the dimensionality. Sky regions should be marked as 0, and astronomical
 sources should be identified with an integer greater than or equal to 1.</td>
 </tr>
-<tr class="row-even"><td>interactive</td>
+<tr class="row-odd"><td>interactive</td>
 <td>False</td>
 <td>Setting this option to True will allow the user to pass out the zclass which
 contains all of the data and methods of ZAP. We describe this use below.</td>
@@ -165,16 +183,12 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>It is possible to add a mask to this operation:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;mask.fits&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>In both cases, the code will create a resulting processed datacube named &#8216;DATACUBE_ZAP.fits&#8217; and an SVD file named &#8216;ZAP_SVD.fits&#8217; in the current directory.</p>
 </div>
 <div class="section" id="masked-processing">
 <h2>Masked Processing<a class="headerlink" href="#masked-processing" title="Permalink to this headline">¶</a></h2>
 <p>Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. The values in the mask image will be 0 in the masked regions (such a where an extended object is) and 1 in the unmasked regions. Set this parameter with <tt class="docutils literal"><span class="pre">mask='maskfile.fits'</span></tt></p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;maskfile.fits&#39;</span><span class="p">)</span> <span class="c"># create SVD file</span>
-<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">cfwidth</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;mask.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -383,7 +397,7 @@ remolding of the data.</p>
 
 <dl class="method">
 <dt id="zap.zclass.writeSVD">
-<tt class="descname">writeSVD</tt><big>(</big><em>svdfn='ZAP_SVD.fits'</em><big>)</big><a class="headerlink" href="#zap.zclass.writeSVD" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">writeSVD</tt><big>(</big><em>svdoutputfits='ZAP_SVD.fits'</em><big>)</big><a class="headerlink" href="#zap.zclass.writeSVD" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write the SVD to an individual fits file.</p>
 </dd></dl>
 
@@ -414,6 +428,10 @@ remolding of the data.</p>
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Welcome to ZAP&#8217;s documentation!</a></li>
+<li><a class="reference internal" href="#installation">Installation</a><ul>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#examples">Examples</a><ul>
 <li><a class="reference internal" href="#sparse-field-case">Sparse Field Case</a></li>
 <li><a class="reference internal" href="#masked-processing">Masked Processing</a></li>

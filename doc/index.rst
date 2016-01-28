@@ -9,7 +9,20 @@ Welcome to ZAP's documentation!
 .. toctree::
    :maxdepth: 2
 
-ZAP (the Zurich Atmosphere Purge) is a high precision sky subtraction tool which can be used as complete sky subtraction solution, or as an enhancement to previously sky-subtracted data.  **Currently, the best results come from applying ZAP to a datacube with no initial sky subtraction.** The method uses PCA to isolate the residual sky subtraction features and remove them from the observed datacube. Though the operation of ZAP is not dependent on perfect flatfielding of the data in a MUSE exposure, better results are obtained when these corrections are made ahead of time.
+ZAP (the Zurich Atmosphere Purge) is a high precision sky subtraction tool which can be used as complete sky subtraction solution, or as an enhancement to previously sky-subtracted data.  The method uses PCA to isolate the residual sky subtraction features and remove them from the observed datacube. Though the operation of ZAP is not dependent on perfect flatfielding of the data in a MUSE exposure, better results are obtained when these corrections are made ahead of time.
+
+Installation
+============
+
+Requirements
+------------
+ZAP requires the following packages:
+
+* Numpy 1.6.0 or later
+* Astropy v1.0 or later
+* SciPy v0.13.3 or later
+
+Many linear algebra operations are performed in ZAP, so it can be beneficial to use an alternative BLAS package. In the Anaconda distribution, the default BLAS comes with numpy linked to OpenBlas, which can amount to a 20% speedup of ZAP.
 
 
 Examples
@@ -48,8 +61,11 @@ cftype       'weight'             The type of filtering that is applied to remov
                                   slower (an additional 10 minutes on a single exposure) and should only be
                                   run in the complete sky subtraction case.
 	     	                  
-cfwidth      100                  Size of the filterbox used to remove the continuum features in order to
-                                  sterilize the basis set used to calculate the eigenbasis.
+cfwidthSP    100                  Size of the filterbox used to remove the continuum features for creating the
+                                  eigenbasis.
+	     	                  
+cfwidthEV    50                   Size of the filterbox used to remove the continuum features for calculating
+                                  the eigenvalues per spectrum
 	     	                  
 optimize     'normal'             A flag used to call the optimization method. The possible options are
                                   'normal', 'enhanced', and 'none'.
@@ -101,9 +117,7 @@ As noted above, this case can be handled simply with the observed datacube itsel
 
   zap.process('INPUT.fits', 'OUTPUT.fits')
 
-It is possible to add a mask to this operation: ::
-
-  zap.process('INPUT.fits', 'OUTPUT.fits', mask='mask.fits')
+In both cases, the code will create a resulting processed datacube named 'DATACUBE_ZAP.fits' and an SVD file named 'ZAP_SVD.fits' in the current directory.
 
 
 Masked Processing
@@ -111,8 +125,7 @@ Masked Processing
 
 Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. The values in the mask image will be 0 in the masked regions (such a where an extended object is) and 1 in the unmasked regions. Set this parameter with ``mask='maskfile.fits'`` ::
 
-  zap.SVDoutput('INPUT.fits', svdfn='ZAP_SVD.fits', mask='maskfile.fits') # create SVD file
-  zap.process('INPUT.fits', 'OUTPUT.fits', extSVD='ZAP_SVD.fits', cfwidth=50)
+  zap.process('INPUT.fits', 'OUTPUT.fits', mask='mask.fits')
 
 Filled Field Case
 -----------------
