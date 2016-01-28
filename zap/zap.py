@@ -57,8 +57,8 @@ logger = logging.getLogger(__name__)
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
             zlevel='median', cftype='weight', cfwidthEV=100, cfwidthSP=50,
-            pevals=[], nevals=[], optimizeType='normal', extSVD='',
-            skycubefits='', svdoutputfits='ZAP_SVD.fits', mask='',
+            pevals=[], nevals=[], optimizeType='normal', extSVD=None,
+            skycubefits=None, svdoutputfits='ZAP_SVD.fits', mask=None,
             interactive=False):
     """ Performs the entire ZAP sky subtraction algorithm.
 
@@ -83,8 +83,11 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     cftype : str
         Method for the continuum filter: `median` or `weight` (default). For
         the `weight` method, a zeroth order sky is required (see `zlevel`).
-    cfwidth : int or float
-        Window size for the continuum filter, default to 100.
+    cfwidthEV : int or float
+        Window size for the continuum filter, for the SVD computation.
+        Default to 100.
+    cfwidthSP : int or float
+        Window size for the continuum filter. Default to 50.
     optimizeType : str
         Optimization method to compute the number of eigenspectra used for each
         segment: `none`, `normal` (default), `enhanced`. If `none`, the number
@@ -129,42 +132,35 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     if optimizeType not in ('none', 'normal', 'enhanced'):
         raise ValueError('Invalid value for optimizeType')
 
-    if extSVD != '':
+    if extSVD is not None and mask is not None:
+        raise ValueError('extSVD and mask parameters are incompatible: if mask'
+                         ' must be used, then the SVD has to be recomputed')
 
-        if mask != '' or cfwidthEV != cfwidthSP:
-            SVDoutput(musecubefits, svdoutputfits=svdoutputfits,
-                      clean=clean, zlevel=zlevel, cftype=cftype,
-                      cfwidth=cfwidthEV, mask=mask)
+    if mask is not None or cfwidthEV != cfwidthSP:
+        # In this case we have to run SVDoutput first to compute the SVD
+        SVDoutput(musecubefits, svdoutputfits=svdoutputfits,
+                  clean=clean, zlevel=zlevel, cftype=cftype,
+                  cfwidth=cfwidthEV, mask=mask)
+        extSVD = svdoutputfits
 
-            zobj = zclass(musecubefits)
-            zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidthSP,
-                      cftype=cftype, pevals=pevals, nevals=nevals,
-                      optimizeType=optimizeType, extSVD=svdoutputfits)
+    zobj = zclass(musecubefits)
+    zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidthSP, cftype=cftype,
+              pevals=pevals, nevals=nevals, optimizeType=optimizeType,
+              extSVD=extSVD)
 
-        else:
-
-            zobj = zclass(musecubefits)
-            zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidthSP,
-                      cftype=cftype, pevals=pevals, nevals=nevals,
-                      optimizeType=optimizeType, extSVD=extSVD)
-            if not interactive:
-                zobj.writeSVD(svdoutputfits=svdoutputfits)
-
-    else:
-
-        zobj = zclass(musecubefits)
-        zobj._run(clean=clean, zlevel=zlevel, cfwidth=cfwidthSP,
-                  cftype=cftype, pevals=pevals, nevals=nevals,
-                  optimizeType=optimizeType, extSVD=extSVD)
-
-    if not interactive:
-        if skycubefits != '':
-            zobj.writeskycube(skycubefits=skycubefits)
-
-        zobj.mergefits(outcubefits)
-
-    else:
+    if interactive:
+        # Return the zobj object without saving files
         return zobj
+
+    if zobj.run_zlevel != 'extSVD' and svdoutputfits is not None:
+        # Save SVD only if it was computed in _run, i.e. if an external SVD
+        # was not given
+        zobj.writeSVD(svdoutputfits=svdoutputfits)
+    if skycubefits is not None:
+        zobj.writeskycube(skycubefits=skycubefits)
+
+    zobj.mergefits(outcubefits)
+
 
 def SVDoutput(musecubefits, svdoutputfits='ZAP_SVD.fits', clean=True,
               zlevel='median', cftype='weight', cfwidth=100, mask=None):
@@ -416,7 +412,7 @@ class zclass(object):
     @timeit
     def _run(self, clean=True, zlevel='median', cftype='weight',
              cfwidth=100, pevals=[], nevals=[], optimizeType='normal',
-             extSVD=''):
+             extSVD=None):
         """ Perform all zclass to ZAP a datacube:
 
         - NaN re/masking,
@@ -442,7 +438,7 @@ class zclass(object):
         self._extract()
 
         # remove the median along the spectral axis
-        if extSVD == '':
+        if extSVD is None:
             if zlevel.lower() != 'none':
                 self._zlevel(calctype=zlevel)
         else:
@@ -452,7 +448,7 @@ class zclass(object):
         self._continuumfilter(cfwidth=cfwidth, cftype=cftype)
 
         # do the multiprocessed SVD calculation
-        if extSVD == '':
+        if extSVD is None:
             self._msvd()
         else:
             self._externalSVD(extSVD)
