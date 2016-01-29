@@ -73,7 +73,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
         Input FITS file, containing a cube with data in the first extension.
     outcubefits : str
         Output FITS file, based on the input one to propagate all header
-        informations and other extensions. Default to DATACUBE_FINAL_ZAP.fits
+        information and other extensions. Default to DATACUBE_FINAL_ZAP.fits
     clean : bool
         If True (default value), the NaN values are cleaned. Spaxels with more
         then 25% of NaN values are removed, the others are replaced with an
@@ -107,7 +107,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     svdoutputfits : str
         Output FITS file. Default to ZAP_SVD.fits
     interactive : bool
-        If True, an object containing all informations on the ZAP process is
+        If True, an object containing all information on the ZAP process is
         returned, and can be used to explore the eigenspectra and recompute the
         output (with the ``reprocess`` method). In this case, the output files
         are not saved (`outcubefits` and `skycubefits` are ignored). Default to
@@ -192,6 +192,7 @@ def SVDoutput(musecubefits, svdoutputfits='ZAP_SVD.fits', clean=True,
         Path of a FITS file containing a mask (1 for objects, 0 for sky).
 
     """
+    logger.info('Running ZAP %s !', __version__)
     logger.info('Processing %s to compute the SVD', musecubefits)
     check_file_exists(svdoutputfits)
 
@@ -1000,7 +1001,24 @@ def rolling_window(a, window):  # function for striding to help speed up
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
 
-def wmedian(spec, wt, cfwidth=300):
+def wmedian(spec, wt, cfwidth=100):
+    """ Performs a weighted median filtering of a 1d spectrum
+
+    Operates using a cumulative sum curve
+
+    Parameters
+    ----------
+
+    spec : numpy.ndarray
+        Input 1d spectrum to be filtered
+    wt : numpy.ndarray
+        A spectrum of equal length as the input array to provide the weights.
+    cfwidth : int or float
+        Window size for the continuum filter, for the SVD computation.
+        Default to 100.
+
+    """
+
     # ignore the warning (feature not a bug)
     old_settings = np.seterr(divide='ignore')
     spec = np.pad(spec, (cfwidth, cfwidth), 'constant', constant_values=0)

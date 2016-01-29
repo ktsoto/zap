@@ -97,7 +97,7 @@ interactive  False                Setting this option to True will allow the use
 
 The code can handle datacubes trimmed in wavelength space. Since the code uses the correlation of segments of the emission line spectrum, it is best to trim the cube at specific wavelengths. The cube can include any connected subset of these segments. (for example 6400 - 8200 Angstroms) ::
 
-  [4500, 5400]
+  [0,    5400]
   [5400, 5850]
   [5850, 6440]
   [6440, 6750]
@@ -107,7 +107,7 @@ The code can handle datacubes trimmed in wavelength space. Since the code uses t
   [8265, 8602]
   [8602, 8731]
   [8731, 9275]
-  [9275, 9500]
+  [9275, 10000]
 
 
 Sparse Field Case
@@ -119,11 +119,10 @@ As noted above, this case can be handled simply with the observed datacube itsel
 
 In both cases, the code will create a resulting processed datacube named 'DATACUBE_ZAP.fits' and an SVD file named 'ZAP_SVD.fits' in the current directory.
 
-
 Masked Processing
 -----------------
 
-Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. The values in the mask image will be 0 in the masked regions (such a where an extended object is) and 1 in the unmasked regions. Set this parameter with ``mask='maskfile.fits'`` ::
+Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. Masks are defined to be >= 1 on astronomical sources and 0 at the position of the sky. Set this parameter with the ``mask`` keyword ::
 
   zap.process('INPUT.fits', 'OUTPUT.fits', mask='mask.fits')
 
@@ -132,8 +131,8 @@ Filled Field Case
 
 This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation. ::
 
-  zap.SVDoutput('Offset_Field_CUBE.fits', svdfn='Offset_ZAP_SVD.fits')
-  zap.process('INPUT.fits', 'OUTPUT.fits', extSVD='ZAP_SVD.fits', cfwidth=50)
+  zap.SVDoutput('Offset_Field_CUBE.fits', svdfn='ZAP_SVD.fits', mask='mask.fits')
+  zap.process('Source_cube.fits', 'OUTPUT.fits', extSVD='ZAP_SVD.fits', cfwidth=50)
 
 The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure.
 
@@ -163,22 +162,22 @@ This function applies a filter on the datacube that removes most continuum featu
 
 It applies a nested set of filters, one uniform of width 3 pixels and one median with a width defined by cfilter. Since it does not calculate a zlevel, it can only use the 'median' method.
 
+
 ================
 Interactive mode
 ================
 
-ZAP can also  be used interactively from within ipython using pyfits. ::
+ZAP can also  be used interactively from within ipython. ::
 
-  from mpdaf_user import zap
-  zclass = zap.process('INPUT.fits', interactive=True)
+  import zap
+  zobj = zap.process('INPUT.fits', interactive=True)
 
-The run method operates on the datacube, and retains all of the data and methods necessary to
-process a final data cube in a python class named zclass. You can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows: ::
+The run method operates on the datacube, and retains all of the data and methods necessary to process a final data cube in a python class named zclass. You can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows: ::
 
-  from mpdaf_user import zap
+  import zap
   from matplotlib import pyplot as plt
 
-  zobj = zap.process('INPUT.fits', optimization='normal') #allow ZAP to run the optimize routine
+  zobj = zap.process('INPUT.fits', optimization='normal', interactive=True) #allow ZAP to run the optimize routine
   zobj.plotvarcurve(5) #plot the variance curves and the selection of the number of eigenspectra used
 
   #plot a spectrum extracted from the original cube

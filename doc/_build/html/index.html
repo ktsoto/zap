@@ -8,7 +8,7 @@
     
     <title>Welcome to ZAP’s documentation! &mdash; zap 0.3 documentation</title>
     
-    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
@@ -187,7 +187,7 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 </div>
 <div class="section" id="masked-processing">
 <h2>Masked Processing<a class="headerlink" href="#masked-processing" title="Permalink to this headline">¶</a></h2>
-<p>Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. The values in the mask image will be 0 in the masked regions (such a where an extended object is) and 1 in the unmasked regions. Set this parameter with <tt class="docutils literal"><span class="pre">mask='maskfile.fits'</span></tt></p>
+<p>Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. Masks are defined to be &gt;= 1 on astronomical sources and 0 at the position of the sky. Set this parameter with the <tt class="docutils literal"><span class="pre">mask</span></tt> keyword</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;mask.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -195,7 +195,7 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 <div class="section" id="filled-field-case">
 <h2>Filled Field Case<a class="headerlink" href="#filled-field-case" title="Permalink to this headline">¶</a></h2>
 <p>This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="s">&#39;Offset_Field_CUBE.fits&#39;</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;Offset_ZAP_SVD.fits&#39;</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="s">&#39;Offset_Field_CUBE.fits&#39;</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;mask.fits&#39;</span><span class="p">)</span>
 <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">cfwidth</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -221,13 +221,13 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 <div class="section" id="interactive-mode">
 <h3>Interactive mode<a class="headerlink" href="#interactive-mode" title="Permalink to this headline">¶</a></h3>
 <p>ZAP can also  be used interactively from within ipython using pyfits.</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">mpdaf_user</span> <span class="kn">import</span> <span class="n">zap</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">zap</span>
 <span class="n">zclass</span> <span class="o">=</span> <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The run method operates on the datacube, and retains all of the data and methods necessary to
 process a final data cube in a python class named zclass. You can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows:</p>
-<div class="highlight-python"><div class="highlight"><pre>from mpdaf_user import zap
+<div class="highlight-python"><div class="highlight"><pre>import zap
 from matplotlib import pyplot as plt
 
 zobj = zap.process(&#39;INPUT.fits&#39;, optimization=&#39;normal&#39;) #allow ZAP to run the optimize routine
