@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Welcome to ZAP’s documentation! &mdash; zap 0.3 documentation</title>
+    <title>Welcome to ZAP’s documentation! &mdash; zap 1.0 documentation</title>
     
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.3',
+        VERSION:     '1.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,7 +23,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="zap 0.3 documentation" href="#" /> 
+    <link rel="top" title="zap 1.0 documentation" href="#" /> 
   </head>
   <body>
     <div class="related">
@@ -32,7 +32,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="#">zap 0.3 documentation</a> &raquo;</li> 
+        <li><a href="#">zap 1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -164,7 +164,7 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 </tbody>
 </table>
 <p>The code can handle datacubes trimmed in wavelength space. Since the code uses the correlation of segments of the emission line spectrum, it is best to trim the cube at specific wavelengths. The cube can include any connected subset of these segments. (for example 6400 - 8200 Angstroms)</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="mi">4500</span><span class="p">,</span> <span class="mi">5400</span><span class="p">]</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="mi">0</span><span class="p">,</span>    <span class="mi">5400</span><span class="p">]</span>
 <span class="p">[</span><span class="mi">5400</span><span class="p">,</span> <span class="mi">5850</span><span class="p">]</span>
 <span class="p">[</span><span class="mi">5850</span><span class="p">,</span> <span class="mi">6440</span><span class="p">]</span>
 <span class="p">[</span><span class="mi">6440</span><span class="p">,</span> <span class="mi">6750</span><span class="p">]</span>
@@ -174,7 +174,7 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 <span class="p">[</span><span class="mi">8265</span><span class="p">,</span> <span class="mi">8602</span><span class="p">]</span>
 <span class="p">[</span><span class="mi">8602</span><span class="p">,</span> <span class="mi">8731</span><span class="p">]</span>
 <span class="p">[</span><span class="mi">8731</span><span class="p">,</span> <span class="mi">9275</span><span class="p">]</span>
-<span class="p">[</span><span class="mi">9275</span><span class="p">,</span> <span class="mi">9500</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">9275</span><span class="p">,</span> <span class="mi">10000</span><span class="p">]</span>
 </pre></div>
 </div>
 <div class="section" id="sparse-field-case">
@@ -196,41 +196,66 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 <h2>Filled Field Case<a class="headerlink" href="#filled-field-case" title="Permalink to this headline">¶</a></h2>
 <p>This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation.</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="s">&#39;Offset_Field_CUBE.fits&#39;</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;mask.fits&#39;</span><span class="p">)</span>
-<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">cfwidth</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;Source_cube.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">cfwidth</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure.</p>
-<div class="section" id="top-level-functions">
-<h3>Top Level Functions<a class="headerlink" href="#top-level-functions" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="extra-functions">
+<h3>Extra Functions<a class="headerlink" href="#extra-functions" title="Permalink to this headline">¶</a></h3>
 <p>Aside from the main &#8220;full process&#8221;, two functions are included that can be run outside of the entire zap process to facilitate some investigations.</p>
-<p><strong>nan cleaning</strong></p>
-<p>This function replaces the nan valued pixels with an average of the adjacent valid pixels. It can be called as below:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">nancleanfits</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">outfn</span><span class="o">=</span><span class="s">&#39;NANCLEAN_CUBE.fits&#39;</span><span class="p">,</span> <span class="n">rejectratio</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">boxsz</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>&#8220;rejectratio&#8221; defines a cutoff for the ratio of pixels in a spaxel before the spaxel is avoided completely.</p>
-<p>&#8220;boxsz&#8221; defines the number of pixels that defines the box around the offending nan pixel. With boxsz set to 1 the function looks for the nearest 26 neighbors which is a 3x3x3 cube.</p>
-<p>This step is an intermediary step in the full ZAP process, but this function allows you to run it as a standalone step.</p>
-<p><strong>continuum removal</strong></p>
-<p>This function applies a filter on the datacube that removes most continuum features. This function allows for the enhancement of emission line characteristics. The filtering method has been enhanced by multiprocessing to produce a rapid result. It can be called as below:</p>
-<div class="highlight-python"><div class="highlight"><pre>zap.contsubfits(musecubefits, contsubfn=&#39;CONTSUB_CUBE.fits&#39;, cfilter=100):
-</pre></div>
-</div>
-<p>It applies a nested set of filters, one uniform of width 3 pixels and one median with a width defined by cfilter. Since it does not calculate a zlevel, it can only use the &#8216;median&#8217; method.</p>
+<dl class="function">
+<dt id="zap.nancleanfits">
+<tt class="descclassname">zap.</tt><tt class="descname">nancleanfits</tt><big>(</big><em>musecubefits</em>, <em>outfn='NANCLEAN_CUBE.fits'</em>, <em>rejectratio=0.25</em>, <em>boxsz=1</em><big>)</big><a class="headerlink" href="#zap.nancleanfits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Detects NaN values in cube and removes them by replacing them with an
+interpolation of the nearest neighbors in the data cube. The positions in
+the cube are retained in nancube for later remasking.</p>
+<dl class="docutils">
+<dt>musecubefits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Input FITS file, containing a cube with data in the first extension.</dd>
+<dt>outfn <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Output FITS file. Default to NANCLEAN_CUBE.fits</dd>
+<dt>rejectratio <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd><dl class="first last docutils">
+<dt>Defines a cutoff for the ratio of NAN to total pixels in a spaxel</dt>
+<dd>before the spaxel is avoided completely. Default to 0.25</dd>
+</dl>
+</dd>
+<dt>boxsz <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Defines the number of pixels around the offending NaN pixel.
+Default to 1, which looks for the 26 nearest neighbors which
+is a 3x3x3 cube.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="zap.wmedian">
+<tt class="descclassname">zap.</tt><tt class="descname">wmedian</tt><big>(</big><em>spec</em>, <em>wt</em>, <em>cfwidth=100</em><big>)</big><a class="headerlink" href="#zap.wmedian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs a weighted median filtering of a 1d spectrum</p>
+<p>Operates using a cumulative sum curve</p>
+<dl class="docutils">
+<dt>spec <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>Input 1d spectrum to be filtered</dd>
+<dt>wt <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd>A spectrum of equal length as the input array to provide the weights.</dd>
+<dt>cfwidth <span class="classifier-delimiter">:</span> <span class="classifier">int or float</span></dt>
+<dd>Window size for the continuum filter, for the SVD computation.
+Default to 100.</dd>
+</dl>
+</dd></dl>
+
 </div>
 <div class="section" id="interactive-mode">
 <h3>Interactive mode<a class="headerlink" href="#interactive-mode" title="Permalink to this headline">¶</a></h3>
-<p>ZAP can also  be used interactively from within ipython using pyfits.</p>
+<p>ZAP can also  be used interactively from within ipython.</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">zap</span>
-<span class="n">zclass</span> <span class="o">=</span> <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">zobj</span> <span class="o">=</span> <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The run method operates on the datacube, and retains all of the data and methods necessary to
-process a final data cube in a python class named zclass. You can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows:</p>
+<p>The run method operates on the datacube, and retains all of the data and methods necessary to process a final data cube in a python class named zclass. You can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows:</p>
 <div class="highlight-python"><div class="highlight"><pre>import zap
 from matplotlib import pyplot as plt
 
-zobj = zap.process(&#39;INPUT.fits&#39;, optimization=&#39;normal&#39;) #allow ZAP to run the optimize routine
+zobj = zap.process(&#39;INPUT.fits&#39;, optimization=&#39;normal&#39;, interactive=True) #allow ZAP to run the optimize routine
 zobj.plotvarcurve(5) #plot the variance curves and the selection of the number of eigenspectra used
 
 #plot a spectrum extracted from the original cube
@@ -297,14 +322,11 @@ entire datacube.</dd>
 <dt>laxis <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
 <dd>A 1d array containing the wavelength solution generated from the header
 parameters.</dd>
-<dt>lparams <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd>An array of parameters taken from the header to generate the wavelength
-solution.</dd>
+<dt>wcs <span class="classifier-delimiter">:</span> <span class="classifier">astropy.wcs.WCS</span></dt>
+<dd>WCS object with the wavelength solution.</dd>
 <dt>lranges <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
 <dd>A list of the wavelength bin limits used in segmenting the sepctrum
 for SVD.</dd>
-<dt>lmin,lmax <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd>The wavelength limits placed on the datacube.</dd>
 <dt>nancube <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
 <dd>A 3d boolean datacube containing True in voxels where a NaN value was
 replaced with an interpolation.</dd>
@@ -436,7 +458,7 @@ remolding of the data.</p>
 <li><a class="reference internal" href="#sparse-field-case">Sparse Field Case</a></li>
 <li><a class="reference internal" href="#masked-processing">Masked Processing</a></li>
 <li><a class="reference internal" href="#filled-field-case">Filled Field Case</a><ul>
-<li><a class="reference internal" href="#top-level-functions">Top Level Functions</a></li>
+<li><a class="reference internal" href="#extra-functions">Extra Functions</a></li>
 <li><a class="reference internal" href="#interactive-mode">Interactive mode</a></li>
 <li><a class="reference internal" href="#zclass">ZCLASS</a></li>
 </ul>
@@ -473,7 +495,7 @@ remolding of the data.</p>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="#">zap 0.3 documentation</a> &raquo;</li> 
+        <li><a href="#">zap 1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

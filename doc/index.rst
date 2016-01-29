@@ -136,31 +136,15 @@ This approach also can address the saturated field case and is robust in the cas
 
 The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure.
 
-===================
-Top Level Functions
-===================
+===============
+Extra Functions
+===============
 
 Aside from the main "full process", two functions are included that can be run outside of the entire zap process to facilitate some investigations.
 
-**nan cleaning**
+.. autofunction:: zap.nancleanfits
 
-This function replaces the nan valued pixels with an average of the adjacent valid pixels. It can be called as below::
-
-  zap.nancleanfits('INPUT.fits', outfn='NANCLEAN_CUBE.fits', rejectratio=0.25, boxsz=1)
-
-"rejectratio" defines a cutoff for the ratio of pixels in a spaxel before the spaxel is avoided completely.
-
-"boxsz" defines the number of pixels that defines the box around the offending nan pixel. With boxsz set to 1 the function looks for the nearest 26 neighbors which is a 3x3x3 cube.
-
-This step is an intermediary step in the full ZAP process, but this function allows you to run it as a standalone step.
-
-**continuum removal**
-
-This function applies a filter on the datacube that removes most continuum features. This function allows for the enhancement of emission line characteristics. The filtering method has been enhanced by multiprocessing to produce a rapid result. It can be called as below::
-
-  zap.contsubfits(musecubefits, contsubfn='CONTSUB_CUBE.fits', cfilter=100):
-
-It applies a nested set of filters, one uniform of width 3 pixels and one median with a width defined by cfilter. Since it does not calculate a zlevel, it can only use the 'median' method.
+.. autofunction:: zap.wmedian
 
 
 ================

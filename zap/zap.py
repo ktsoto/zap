@@ -227,7 +227,7 @@ def SVDoutput(musecubefits, svdoutputfits='ZAP_SVD.fits', clean=True,
     zobj.writeSVD(svdoutputfits=svdoutputfits)
 
 
-def contsubfits(musecubefits, contsubfn='CONTSUB_CUBE.fits', cfwidth=300):
+def contsubfits(musecubefits, contsubfn='CONTSUB_CUBE.fits', cfwidth=100):
     """ A multiprocessed implementation of the continuum removal.
 
     This process distributes the data to many processes that then reassemble
@@ -255,6 +255,22 @@ def nancleanfits(musecubefits, outfn='NANCLEAN_CUBE.fits', rejectratio=0.25,
     Detects NaN values in cube and removes them by replacing them with an
     interpolation of the nearest neighbors in the data cube. The positions in
     the cube are retained in nancube for later remasking.
+
+    Parameters
+    ----------
+
+    musecubefits : str
+        Input FITS file, containing a cube with data in the first extension.
+    outfn : str
+        Output FITS file. Default to NANCLEAN_CUBE.fits
+    rejectratio : float
+        Defines a cutoff for the ratio of NAN to total pixels in a spaxel
+         before the spaxel is avoided completely. Default to 0.25
+    boxsz : int
+        Defines the number of pixels around the offending NaN pixel.
+        Default to 1, which looks for the 26 nearest neighbors which
+        is a 3x3x3 cube.
+
     """
     check_file_exists(outfn)
     hdu = fits.open(musecubefits)
