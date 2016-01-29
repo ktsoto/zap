@@ -17,6 +17,7 @@
 
 from __future__ import absolute_import, division, print_function
 
+import astropy.units as u
 import logging
 import numpy as np
 import os
@@ -350,14 +351,23 @@ class zclass(object):
         """
         hdu = fits.open(musecubefits)
         self.cube = hdu[1].data
-        self.header = header = hdu[1].header
+        self.header = hdu[1].header
         self.musecubefits = musecubefits
         hdu.close()
 
-        self.wcs = WCS(header).sub(['spectral'])
+        # Workaround for floating points errors in wcs computation: if cunit is
+        # specified, wcslib will convert in meters instead of angstroms, so we
+        # remove cunit before creating the wcs object
+        header = self.header.copy()
+        unit = u.Unit(header.pop('CUNIT3'))
+        self.wcs = WCS(header).sub([3])
+
+        # Create Lambda axis
         wlaxis = np.arange(self.cube.shape[0])
-        # Lambda axis in angstroms (wcslib works in meters)
-        self.laxis = self.wcs.all_pix2world(wlaxis, 0)[0] / 1e-10
+        self.laxis = self.wcs.all_pix2world(wlaxis, 0)[0]
+        if unit != u.angstrom:
+            # Make sure lambda is in angstroms
+            self.laxis = (self.laxis * unit).to(u.angstrom).value
 
         # NaN Cleaning
         self.run_clean = False
