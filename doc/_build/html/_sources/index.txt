@@ -28,12 +28,16 @@ Many linear algebra operations are performed in ZAP, so it can be beneficial to 
 Examples
 ========
 
+The main function is ``zap.process``
+
+.. autofunction:: zap.process
+
 In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a final fits datacube.::
 
-  from mpdaf_user import zap
+  import zap
   zap.process('INPUT.fits', 'OUTPUT.fits')
 
-Care should be taken, however, since this case assumes a sparse field.
+Care should be taken, however, since this case assumes a sparse field, and better results can be obtained by applying masks.
 
 There are a number of options that can be passed to the code which we tabulate here, and describe in several different use cases.
 
@@ -140,7 +144,7 @@ The integration time of this frame does not need to be the same as the object ex
 Extra Functions
 ===============
 
-Aside from the main "full process", two functions are included that can be run outside of the entire zap process to facilitate some investigations.
+Aside from the main process, two functions are included that can be run outside of the entire zap process to facilitate some investigations.
 
 .. autofunction:: zap.nancleanfits
 

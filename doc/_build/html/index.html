@@ -64,12 +64,66 @@
 </div>
 <div class="section" id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
+<p>The main function is <tt class="docutils literal"><span class="pre">zap.process</span></tt></p>
+<dl class="function">
+<dt id="zap.process">
+<tt class="descclassname">zap.</tt><tt class="descname">process</tt><big>(</big><em>musecubefits</em>, <em>outcubefits='DATACUBE_FINAL_ZAP.fits'</em>, <em>clean=True</em>, <em>zlevel='median'</em>, <em>cftype='weight'</em>, <em>cfwidthEV=100</em>, <em>cfwidthSP=50</em>, <em>pevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>nevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>optimizeType='normal'</em>, <em>extSVD=None</em>, <em>skycubefits=None</em>, <em>svdoutputfits='ZAP_SVD.fits'</em>, <em>mask=None</em>, <em>interactive=False</em><big>)</big><a class="headerlink" href="#zap.process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs the entire ZAP sky subtraction algorithm.</p>
+<p>Work on an input FITS file and optionally writes the product to an output
+FITS file.</p>
+<dl class="docutils">
+<dt>musecubefits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Input FITS file, containing a cube with data in the first extension.</dd>
+<dt>outcubefits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Output FITS file, based on the input one to propagate all header
+information and other extensions. Default to DATACUBE_FINAL_ZAP.fits</dd>
+<dt>clean <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>If True (default value), the NaN values are cleaned. Spaxels with more
+then 25% of NaN values are removed, the others are replaced with an
+interpolation from the neighbors.</dd>
+<dt>zlevel <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Method for the zeroth order sky removal: <cite>none</cite>, <cite>sigclip</cite> or <cite>median</cite>
+(default).</dd>
+<dt>cftype <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Method for the continuum filter: <cite>median</cite> or <cite>weight</cite> (default). For
+the <cite>weight</cite> method, a zeroth order sky is required (see <cite>zlevel</cite>).</dd>
+<dt>cfwidthEV <span class="classifier-delimiter">:</span> <span class="classifier">int or float</span></dt>
+<dd>Window size for the continuum filter, for the SVD computation.
+Default to 100.</dd>
+<dt>cfwidthSP <span class="classifier-delimiter">:</span> <span class="classifier">int or float</span></dt>
+<dd>Window size for the continuum filter. Default to 50.</dd>
+<dt>optimizeType <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Optimization method to compute the number of eigenspectra used for each
+segment: <cite>none</cite>, <cite>normal</cite> (default), <cite>enhanced</cite>. If <cite>none</cite>, the number
+of eigenspectra must be specified with <cite>nevals</cite> or <cite>pevals</cite>, otherwise
+<cite>normal</cite> is used.</dd>
+<dt>pevals <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>Allow to specify the percentage of eigenspectra used for each segment.</dd>
+<dt>nevals <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd>Allow to specify the number of eigenspectra used for each segment.</dd>
+<dt>extSVD <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Path of an input FITS file containing a SVD computed by the
+<tt class="docutils literal"><span class="pre">SVDoutput</span></tt> function. Otherwise the SVD is computed.</dd>
+<dt>skycubefits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Path for the optional output of the sky that is subtracted from the
+cube. This is simply the input cube minus the output cube.</dd>
+<dt>svdoutputfits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Output FITS file. Default to ZAP_SVD.fits</dd>
+<dt>interactive <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd>If True, an object containing all information on the ZAP process is
+returned, and can be used to explore the eigenspectra and recompute the
+output (with the <tt class="docutils literal"><span class="pre">reprocess</span></tt> method). In this case, the output files
+are not saved (<cite>outcubefits</cite> and <cite>skycubefits</cite> are ignored). Default to
+False.</dd>
+</dl>
+</dd></dl>
+
 <p>In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a final fits datacube.:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">mpdaf_user</span> <span class="kn">import</span> <span class="n">zap</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">zap</span>
 <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Care should be taken, however, since this case assumes a sparse field.</p>
+<p>Care should be taken, however, since this case assumes a sparse field, and better results can be obtained by applying masks.</p>
 <p>There are a number of options that can be passed to the code which we tabulate here, and describe in several different use cases.</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -202,7 +256,7 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 <p>The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure.</p>
 <div class="section" id="extra-functions">
 <h3>Extra Functions<a class="headerlink" href="#extra-functions" title="Permalink to this headline">¶</a></h3>
-<p>Aside from the main &#8220;full process&#8221;, two functions are included that can be run outside of the entire zap process to facilitate some investigations.</p>
+<p>Aside from the main process, two functions are included that can be run outside of the entire zap process to facilitate some investigations.</p>
 <dl class="function">
 <dt id="zap.nancleanfits">
 <tt class="descclassname">zap.</tt><tt class="descname">nancleanfits</tt><big>(</big><em>musecubefits</em>, <em>outfn='NANCLEAN_CUBE.fits'</em>, <em>rejectratio=0.25</em>, <em>boxsz=1</em><big>)</big><a class="headerlink" href="#zap.nancleanfits" title="Permalink to this definition">¶</a></dt>
