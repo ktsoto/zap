@@ -203,6 +203,9 @@ def SVDoutput(musecubefits, svdoutputfits='ZAP_SVD.fits', clean=True,
 
     zobj = zclass(musecubefits)
 
+    # number of segments
+    nseg = len(zobj.pranges)
+
     # clean up the nan values
     if clean:
         zobj._nanclean()
@@ -392,6 +395,9 @@ class zclass(object):
         self.nancube = None
         self._boxsz = 1
         self._rejectratio = 0.25
+
+        # Mask file
+        self.maskfile = None
 
         # zlevel parameters
         self.run_zlevel = False
@@ -829,6 +835,7 @@ class zclass(object):
 
         """
         logger.info('Applying Mask for SVD Calculation from %s', mask)
+        self.maskfile = mask
         mask = fits.getdata(mask).astype(bool)
         nmasked = np.count_nonzero(mask)
         logger.info('Masking %d pixels (%d%%)', nmasked,
@@ -881,6 +888,17 @@ class zclass(object):
         """Write the SVD to an individual fits file."""
 
         check_file_exists(svdoutputfits)
+        header = fits.Header()
+        header['ZAPvers'] = (__version__, 'ZAP version')
+        header['ZAPzlvl'] = (self.run_zlevel, 'ZAP zero level correction')
+        header['ZAPclean'] = (self.run_clean,
+                              'ZAP NaN cleaning performed for calculation')
+        header['ZAPcftyp'] = (self._cftype, 'ZAP continuum filter type')
+        header['ZAPcfwid'] = (self._cfwidth, 'ZAP continuum filter size')
+        header['ZAPmask'] = (self.maskfile, 'ZAP mask used to remove sources')
+        nseg = len(self.pranges)
+        header['ZAPnseg'] = (nseg, 'Number of segments used for ZAP SVD')
+
         hdu = fits.HDUList([fits.PrimaryHDU(self.zlsky)])
         for i in range(len(self.pranges)):
             hdu.append(fits.ImageHDU(self.especeval[i][0]))
