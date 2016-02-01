@@ -73,7 +73,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
         Input FITS file, containing a cube with data in the first extension.
     outcubefits : str
         Output FITS file, based on the input one to propagate all header
-        information and other extensions. Default to DATACUBE_FINAL_ZAP.fits
+        information and other extensions. Default to `DATACUBE_FINAL_ZAP.fits`.
     clean : bool
         If True (default value), the NaN values are cleaned. Spaxels with more
         then 25% of NaN values are removed, the others are replaced with an
@@ -100,16 +100,17 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
         Allow to specify the number of eigenspectra used for each segment.
     extSVD : str
         Path of an input FITS file containing a SVD computed by the
-        ``SVDoutput`` function. Otherwise the SVD is computed.
+        :func:`~zap.SVDoutput` function. Otherwise the SVD is computed.
     skycubefits : str
         Path for the optional output of the sky that is subtracted from the
         cube. This is simply the input cube minus the output cube.
     svdoutputfits : str
-        Output FITS file. Default to ZAP_SVD.fits
+        Output FITS file. Default to `ZAP_SVD.fits`.
     interactive : bool
-        If True, an object containing all information on the ZAP process is
-        returned, and can be used to explore the eigenspectra and recompute the
-        output (with the ``reprocess`` method). In this case, the output files
+        If True, a :class:`~zap.zclass` object containing all information on
+        the ZAP process is returned, and can be used to explore the
+        eigenspectra and recompute the output (with the
+        :meth:`~zap.zclass.reprocess` method). In this case, the output files
         are not saved (`outcubefits` and `skycubefits` are ignored). Default to
         False.
 

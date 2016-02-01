@@ -22,20 +22,20 @@ ZAP requires the following packages:
 * Astropy v1.0 or later
 * SciPy v0.13.3 or later
 
-Many linear algebra operations are performed in ZAP, so it can be beneficial to use an alternative BLAS package. In the Anaconda distribution, the default BLAS comes with numpy linked to OpenBlas, which can amount to a 20% speedup of ZAP.
+Many linear algebra operations are performed in ZAP, so it can be beneficial to use an alternative BLAS package. In the Anaconda distribution, the default BLAS comes with Numpy linked to OpenBlas, which can amount to a 20% speedup of ZAP.
 
 
 Examples
 ========
 
-The main function is ``zap.process``
+The main function is ``zap.process``:
 
 .. autofunction:: zap.process
 
-In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a final fits datacube.::
+In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a final fits datacube::
 
   import zap
-  zap.process('INPUT.fits', 'OUTPUT.fits')
+  zap.process('INPUT.fits', outcubefits='OUTPUT.fits')
 
 Care should be taken, however, since this case assumes a sparse field, and better results can be obtained by applying masks.
 
@@ -44,59 +44,59 @@ There are a number of options that can be passed to the code which we tabulate h
 ===========  ===================  ==============================================================================
 Keyword      Default              Function
 ===========  ===================  ==============================================================================
-outcubefits  'DATACUBE_ZAP.fits'  the fits filename for the output datacube.
+outcubefits  `DATACUBE_ZAP.fits`  The fits filename for the output datacube.
 
 clean        True                 Interpolates over NaN values in the datacube to allow processing on all
                                   spectra. The NaN values are replaced in the final datacube.
                                   Any spaxel that includes a NaN pixel will hinder the calculation, so this
-				  step is used to maximize the number of contributors. The NaN values are
-				  reinserted into the final datacube.
-	     	                  
-zlevel       'median'             This option is used to define the method for determining the zeroth order
+                                  step is used to maximize the number of contributors. The NaN values are
+                                  reinserted into the final datacube.
+
+zlevel       `median`             This option is used to define the method for determining the zeroth order
                                   subtraction of the sky. This is used to remove any systematic sky feature
-                                  that exists over the whole field. Options are 'median', 'sigclip', and 'none'.
-                                  The 'none' option should only be applied when ZAP is applied to enhance a
+                                  that exists over the whole field. Options are `median`, `sigclip`, and `none`.
+                                  The `none` option should only be applied when ZAP is applied to enhance a
                                   previous sky subtraction.
-	     	                  
-cftype       'weight'             The type of filtering that is applied to remove the continuum.  'weight'
+
+cftype       `weight`             The type of filtering that is applied to remove the continuum.  `weight`
                                   refers to the weighted median, which uses the calculated zlevel sky as the
-                                  weight. 'median' refers to a rolling median filter with a nested small
-                                  uniform filter. The 'weight' option provides a better result, but is much
+                                  weight. `median` refers to a rolling median filter with a nested small
+                                  uniform filter. The `weight` option provides a better result, but is much
                                   slower (an additional 10 minutes on a single exposure) and should only be
                                   run in the complete sky subtraction case.
-	     	                  
+
 cfwidthSP    100                  Size of the filterbox used to remove the continuum features for creating the
                                   eigenbasis.
-	     	                  
+
 cfwidthEV    50                   Size of the filterbox used to remove the continuum features for calculating
                                   the eigenvalues per spectrum
-	     	                  
-optimize     'normal'             A flag used to call the optimization method. The possible options are
-                                  'normal', 'enhanced', and 'none'.
-	     	                  
-nevals       []                   This option is used for the manual selection of the the number of eigenvectors
+
+optimize     `normal`             A flag used to call the optimization method. The possible options are
+                                  `normal`, `enhanced`, and `none`.
+
+nevals       []                   This option is used for the manual selection of the number of eigenvectors
                                   to be used. If this is used, the pevals is ignored. Provide either a single
-				  value that will be used for all of the segments, or a list of 11 values that
-				  will be used for each of the segments.
-	     	                  
-pevals       []                   This option is used for the manual selection of the the number of eigenvectors
+                                  value that will be used for all of the segments, or a list of 11 values that
+                                  will be used for each of the segments.
+
+pevals       []                   This option is used for the manual selection of the number of eigenvectors
                                   to be used. This value is the percentage of the calculated
-				  eigenspectra/eigenvalues used per spectral segment. Provide either a single
-				  value that will be used for all of the segments, or a list of 11 values that
-				  will be used for each of the segments.
-	     	                  
+                                  eigenspectra/eigenvalues used per spectral segment. Provide either a single
+                                  value that will be used for all of the segments, or a list of 11 values that
+                                  will be used for each of the segments.
+
 extSVD       ''                   An optional parameter that allows the input of a externally calculated
                                   eigenbasis as well as a zlevel. This can be constructed from either a masked
-				  version of a sparse field case, or an external sky frame.
-	     	                  
+                                  version of a sparse field case, or an external sky frame.
+
 mask         ''                   A 2D fits image to exclude regions that may contaminate the zlevel or
                                   eigenspectra. This image should be constructed from the datacube itself to
-				  match the dimensionality. Sky regions should be marked as 0, and astronomical
-				  sources should be identified with an integer greater than or equal to 1.
+                                  match the dimensionality. Sky regions should be marked as 0, and astronomical
+                                  sources should be identified with an integer greater than or equal to 1.
 
-interactive  False                Setting this option to True will allow the user to pass out the zclass which
+interactive  False                Setting this option to True will allow the user to pass out the :class:`~zap.zclass` which
                                   contains all of the data and methods of ZAP. We describe this use below.
-	     
+
 ===========  ===================  ==============================================================================
 
 The code can handle datacubes trimmed in wavelength space. Since the code uses the correlation of segments of the emission line spectrum, it is best to trim the cube at specific wavelengths. The cube can include any connected subset of these segments. (for example 6400 - 8200 Angstroms) ::
@@ -117,26 +117,28 @@ The code can handle datacubes trimmed in wavelength space. Since the code uses t
 Sparse Field Case
 -----------------
 
-As noted above, this case can be handled simply with the observed datacube itself, using: ::
+As noted above, this case can be handled simply with the observed datacube itself, using::
 
-  zap.process('INPUT.fits', 'OUTPUT.fits')
+  zap.process('INPUT.fits', outcubefits='OUTPUT.fits')
 
-In both cases, the code will create a resulting processed datacube named 'DATACUBE_ZAP.fits' and an SVD file named 'ZAP_SVD.fits' in the current directory.
+In both cases, the code will create a resulting processed datacube named
+``DATACUBE_ZAP.fits`` and an SVD file named ``ZAP_SVD.fits`` in the current
+directory.
 
 Masked Processing
 -----------------
 
 Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. Masks are defined to be >= 1 on astronomical sources and 0 at the position of the sky. Set this parameter with the ``mask`` keyword ::
 
-  zap.process('INPUT.fits', 'OUTPUT.fits', mask='mask.fits')
+  zap.process('INPUT.fits', outcubefits='OUTPUT.fits', mask='mask.fits')
 
 Filled Field Case
 -----------------
 
-This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation. ::
+This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation::
 
   zap.SVDoutput('Offset_Field_CUBE.fits', svdfn='ZAP_SVD.fits', mask='mask.fits')
-  zap.process('Source_cube.fits', 'OUTPUT.fits', extSVD='ZAP_SVD.fits', cfwidth=50)
+  zap.process('Source_cube.fits', outcubefits='OUTPUT.fits', extSVD='ZAP_SVD.fits', cfwidth=50)
 
 The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure.
 
@@ -150,64 +152,75 @@ Aside from the main process, two functions are included that can be run outside 
 
 .. autofunction:: zap.wmedian
 
+.. autofunction:: zap.SVDoutput
+
 
 ================
 Interactive mode
 ================
 
-ZAP can also  be used interactively from within ipython. ::
+ZAP can also  be used interactively from within IPython ::
 
   import zap
   zobj = zap.process('INPUT.fits', interactive=True)
 
-The run method operates on the datacube, and retains all of the data and methods necessary to process a final data cube in a python class named zclass. You can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows: ::
+The run method operates on the datacube, and retains all of the data and
+methods necessary to process a final data cube in a python class named
+:class:`~zap.zclass`. You can elect to investigate the data product via the
+:class:`~zap.zclass`, and even reprocess the cube with a different number of
+eigenspectra per region.  A workflow may go as follows:
+
+.. code-block:: python
 
   import zap
   from matplotlib import pyplot as plt
 
-  zobj = zap.process('INPUT.fits', optimization='normal', interactive=True) #allow ZAP to run the optimize routine
-  zobj.plotvarcurve(5) #plot the variance curves and the selection of the number of eigenspectra used
+  # allow ZAP to run the optimize routine
+  zobj = zap.process('INPUT.fits', optimization='normal', interactive=True)
 
-  #plot a spectrum extracted from the original cube
+  # plot the variance curves and the selection of the number of eigenspectra used
+  zobj.plotvarcurve(5)
+
+  # plot a spectrum extracted from the original cube
   plt.figure()
   plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), 'b', alpha=0.3)
 
-  #plot a spectrum of the cleaned ZAP dataproduct
+  # plot a spectrum of the cleaned ZAP dataproduct
   plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2)), 'g')
 
-  #choose just the first 3 spectra for all segmments 
+  # choose just the first 3 spectra for all segmments
   zobj.reprocess(nevals=3)
 
-  #plot a spectrum extracted from the original cube
+  # plot a spectrum extracted from the original cube
   plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), 'b', alpha=0.3)
 
-  #plot a spectrum of the cleaned ZAP dataproduct
+  # plot a spectrum of the cleaned ZAP dataproduct
   plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'g')
 
-  #choose some number of modes by hand
+  # choose some number of modes by hand
   zobj.reprocess(nevals=[2,5,2,4,6,7,9,8,5])
 
-  #plot a spectrum
+  # plot a spectrum
   plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'k')
 
-  #Use the optimization algorithm to identify the best number of modes per segment
+  # Use the optimization algorithm to identify the best number of modes per segment
   zobj.optimize()
 
-  #compare to the previous versions
+  # compare to the previous versions
   plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'r')
 
-  #identify a pixel in the dispersion axis that shows a residual feature in the original
+  # identify a pixel in the dispersion axis that shows a residual feature in the original
   plt.figure()
   plt.matshow(zobj.cube[2903,:,:])
 
-  #compare this to the zap dataproduct
+  # compare this to the zap dataproduct
   plt.figure()
   plt.matshow(zobj.cleancube[2903,:,:])
 
-  #write the processed cube as a single extension fits
+  # write the processed cube as a single extension fits
   zobj.writecube('DATACUBE_ZAP.fits')
 
-  #or merge the zap datacube into the original input datacube, replacing the data extension
+  # or merge the zap datacube into the original input datacube, replacing the data extension
   zobj.writefits(outcubefits='DATACUBE_FINAL_ZAP.fits')
 
 ======
@@ -215,4 +228,3 @@ ZCLASS
 ======
 .. autoclass:: zap.zclass
    :members:
-

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Welcome to ZAP’s documentation! &mdash; zap 1.0 documentation</title>
+    <title>Welcome to ZAP’s documentation! &mdash; zap 1.0.dev71 documentation</title>
     
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.0',
+        VERSION:     '1.0.dev71',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,23 +23,23 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="zap 1.0 documentation" href="#" /> 
+    <link rel="top" title="zap 1.0.dev71 documentation" href="#" /> 
   </head>
-  <body>
-    <div class="related">
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="#">zap 1.0 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">zap 1.0.dev71 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
   <div class="section" id="welcome-to-zap-s-documentation">
 <h1>Welcome to ZAP&#8217;s documentation!<a class="headerlink" href="#welcome-to-zap-s-documentation" title="Permalink to this headline">¶</a></h1>
@@ -59,77 +59,112 @@
 <li>Astropy v1.0 or later</li>
 <li>SciPy v0.13.3 or later</li>
 </ul>
-<p>Many linear algebra operations are performed in ZAP, so it can be beneficial to use an alternative BLAS package. In the Anaconda distribution, the default BLAS comes with numpy linked to OpenBlas, which can amount to a 20% speedup of ZAP.</p>
+<p>Many linear algebra operations are performed in ZAP, so it can be beneficial to use an alternative BLAS package. In the Anaconda distribution, the default BLAS comes with Numpy linked to OpenBlas, which can amount to a 20% speedup of ZAP.</p>
 </div>
 </div>
 <div class="section" id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
-<p>The main function is <tt class="docutils literal"><span class="pre">zap.process</span></tt></p>
+<p>The main function is <code class="docutils literal"><span class="pre">zap.process</span></code>:</p>
 <dl class="function">
 <dt id="zap.process">
-<tt class="descclassname">zap.</tt><tt class="descname">process</tt><big>(</big><em>musecubefits</em>, <em>outcubefits='DATACUBE_FINAL_ZAP.fits'</em>, <em>clean=True</em>, <em>zlevel='median'</em>, <em>cftype='weight'</em>, <em>cfwidthEV=100</em>, <em>cfwidthSP=50</em>, <em>pevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>nevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>optimizeType='normal'</em>, <em>extSVD=None</em>, <em>skycubefits=None</em>, <em>svdoutputfits='ZAP_SVD.fits'</em>, <em>mask=None</em>, <em>interactive=False</em><big>)</big><a class="headerlink" href="#zap.process" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">zap.</code><code class="descname">process</code><span class="sig-paren">(</span><em>musecubefits</em>, <em>outcubefits='DATACUBE_FINAL_ZAP.fits'</em>, <em>clean=True</em>, <em>zlevel='median'</em>, <em>cftype='weight'</em>, <em>cfwidthEV=100</em>, <em>cfwidthSP=50</em>, <em>pevals=[]</em>, <em>nevals=[]</em>, <em>optimizeType='normal'</em>, <em>extSVD=None</em>, <em>skycubefits=None</em>, <em>svdoutputfits='ZAP_SVD.fits'</em>, <em>mask=None</em>, <em>interactive=False</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.process" title="Permalink to this definition">¶</a></dt>
 <dd><p>Performs the entire ZAP sky subtraction algorithm.</p>
 <p>Work on an input FITS file and optionally writes the product to an output
 FITS file.</p>
-<dl class="docutils">
-<dt>musecubefits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Input FITS file, containing a cube with data in the first extension.</dd>
-<dt>outcubefits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Output FITS file, based on the input one to propagate all header
-information and other extensions. Default to DATACUBE_FINAL_ZAP.fits</dd>
-<dt>clean <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
-<dd>If True (default value), the NaN values are cleaned. Spaxels with more
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>musecubefits</strong> : str</p>
+<blockquote>
+<div><p>Input FITS file, containing a cube with data in the first extension.</p>
+</div></blockquote>
+<p><strong>outcubefits</strong> : str</p>
+<blockquote>
+<div><p>Output FITS file, based on the input one to propagate all header
+information and other extensions. Default to <cite>DATACUBE_FINAL_ZAP.fits</cite>.</p>
+</div></blockquote>
+<p><strong>clean</strong> : bool</p>
+<blockquote>
+<div><p>If True (default value), the NaN values are cleaned. Spaxels with more
 then 25% of NaN values are removed, the others are replaced with an
-interpolation from the neighbors.</dd>
-<dt>zlevel <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Method for the zeroth order sky removal: <cite>none</cite>, <cite>sigclip</cite> or <cite>median</cite>
-(default).</dd>
-<dt>cftype <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Method for the continuum filter: <cite>median</cite> or <cite>weight</cite> (default). For
-the <cite>weight</cite> method, a zeroth order sky is required (see <cite>zlevel</cite>).</dd>
-<dt>cfwidthEV <span class="classifier-delimiter">:</span> <span class="classifier">int or float</span></dt>
-<dd>Window size for the continuum filter, for the SVD computation.
-Default to 100.</dd>
-<dt>cfwidthSP <span class="classifier-delimiter">:</span> <span class="classifier">int or float</span></dt>
-<dd>Window size for the continuum filter. Default to 50.</dd>
-<dt>optimizeType <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Optimization method to compute the number of eigenspectra used for each
+interpolation from the neighbors.</p>
+</div></blockquote>
+<p><strong>zlevel</strong> : str</p>
+<blockquote>
+<div><p>Method for the zeroth order sky removal: <cite>none</cite>, <cite>sigclip</cite> or <cite>median</cite>
+(default).</p>
+</div></blockquote>
+<p><strong>cftype</strong> : str</p>
+<blockquote>
+<div><p>Method for the continuum filter: <cite>median</cite> or <cite>weight</cite> (default). For
+the <cite>weight</cite> method, a zeroth order sky is required (see <cite>zlevel</cite>).</p>
+</div></blockquote>
+<p><strong>cfwidthEV</strong> : int or float</p>
+<blockquote>
+<div><p>Window size for the continuum filter, for the SVD computation.
+Default to 100.</p>
+</div></blockquote>
+<p><strong>cfwidthSP</strong> : int or float</p>
+<blockquote>
+<div><p>Window size for the continuum filter. Default to 50.</p>
+</div></blockquote>
+<p><strong>optimizeType</strong> : str</p>
+<blockquote>
+<div><p>Optimization method to compute the number of eigenspectra used for each
 segment: <cite>none</cite>, <cite>normal</cite> (default), <cite>enhanced</cite>. If <cite>none</cite>, the number
 of eigenspectra must be specified with <cite>nevals</cite> or <cite>pevals</cite>, otherwise
-<cite>normal</cite> is used.</dd>
-<dt>pevals <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd>Allow to specify the percentage of eigenspectra used for each segment.</dd>
-<dt>nevals <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd>Allow to specify the number of eigenspectra used for each segment.</dd>
-<dt>extSVD <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Path of an input FITS file containing a SVD computed by the
-<tt class="docutils literal"><span class="pre">SVDoutput</span></tt> function. Otherwise the SVD is computed.</dd>
-<dt>skycubefits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Path for the optional output of the sky that is subtracted from the
-cube. This is simply the input cube minus the output cube.</dd>
-<dt>svdoutputfits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Output FITS file. Default to ZAP_SVD.fits</dd>
-<dt>interactive <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
-<dd>If True, an object containing all information on the ZAP process is
-returned, and can be used to explore the eigenspectra and recompute the
-output (with the <tt class="docutils literal"><span class="pre">reprocess</span></tt> method). In this case, the output files
+<cite>normal</cite> is used.</p>
+</div></blockquote>
+<p><strong>pevals</strong> : list</p>
+<blockquote>
+<div><p>Allow to specify the percentage of eigenspectra used for each segment.</p>
+</div></blockquote>
+<p><strong>nevals</strong> : list</p>
+<blockquote>
+<div><p>Allow to specify the number of eigenspectra used for each segment.</p>
+</div></blockquote>
+<p><strong>extSVD</strong> : str</p>
+<blockquote>
+<div><p>Path of an input FITS file containing a SVD computed by the
+<a class="reference internal" href="#zap.SVDoutput" title="zap.SVDoutput"><code class="xref py py-func docutils literal"><span class="pre">SVDoutput()</span></code></a> function. Otherwise the SVD is computed.</p>
+</div></blockquote>
+<p><strong>skycubefits</strong> : str</p>
+<blockquote>
+<div><p>Path for the optional output of the sky that is subtracted from the
+cube. This is simply the input cube minus the output cube.</p>
+</div></blockquote>
+<p><strong>svdoutputfits</strong> : str</p>
+<blockquote>
+<div><p>Output FITS file. Default to <cite>ZAP_SVD.fits</cite>.</p>
+</div></blockquote>
+<p><strong>interactive</strong> : bool</p>
+<blockquote class="last">
+<div><p>If True, a <a class="reference internal" href="#zap.zclass" title="zap.zclass"><code class="xref py py-class docutils literal"><span class="pre">zclass</span></code></a> object containing all information on
+the ZAP process is returned, and can be used to explore the
+eigenspectra and recompute the output (with the
+<a class="reference internal" href="#zap.zclass.reprocess" title="zap.zclass.reprocess"><code class="xref py py-meth docutils literal"><span class="pre">reprocess()</span></code></a> method). In this case, the output files
 are not saved (<cite>outcubefits</cite> and <cite>skycubefits</cite> are ignored). Default to
-False.</dd>
-</dl>
+False.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
-<p>In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a final fits datacube.:</p>
+<p>In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a final fits datacube:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">zap</span>
-<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">)</span>
+<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">outcubefits</span><span class="o">=</span><span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Care should be taken, however, since this case assumes a sparse field, and better results can be obtained by applying masks.</p>
 <p>There are a number of options that can be passed to the code which we tabulate here, and describe in several different use cases.</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="10%" />
-<col width="18%" />
-<col width="72%" />
+<col width="9%" />
+<col width="16%" />
+<col width="75%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Keyword</th>
@@ -139,8 +174,8 @@ False.</dd>
 </thead>
 <tbody valign="top">
 <tr class="row-even"><td>outcubefits</td>
-<td>&#8216;DATACUBE_ZAP.fits&#8217;</td>
-<td>the fits filename for the output datacube.</td>
+<td><cite>DATACUBE_ZAP.fits</cite></td>
+<td>The fits filename for the output datacube.</td>
 </tr>
 <tr class="row-odd"><td>clean</td>
 <td>True</td>
@@ -151,19 +186,19 @@ step is used to maximize the number of contributors. The NaN values are
 reinserted into the final datacube.</td>
 </tr>
 <tr class="row-even"><td>zlevel</td>
-<td>&#8216;median&#8217;</td>
+<td><cite>median</cite></td>
 <td>This option is used to define the method for determining the zeroth order
 subtraction of the sky. This is used to remove any systematic sky feature
-that exists over the whole field. Options are &#8216;median&#8217;, &#8216;sigclip&#8217;, and &#8216;none&#8217;.
-The &#8216;none&#8217; option should only be applied when ZAP is applied to enhance a
+that exists over the whole field. Options are <cite>median</cite>, <cite>sigclip</cite>, and <cite>none</cite>.
+The <cite>none</cite> option should only be applied when ZAP is applied to enhance a
 previous sky subtraction.</td>
 </tr>
 <tr class="row-odd"><td>cftype</td>
-<td>&#8216;weight&#8217;</td>
-<td>The type of filtering that is applied to remove the continuum.  &#8216;weight&#8217;
+<td><cite>weight</cite></td>
+<td>The type of filtering that is applied to remove the continuum.  <cite>weight</cite>
 refers to the weighted median, which uses the calculated zlevel sky as the
-weight. &#8216;median&#8217; refers to a rolling median filter with a nested small
-uniform filter. The &#8216;weight&#8217; option provides a better result, but is much
+weight. <cite>median</cite> refers to a rolling median filter with a nested small
+uniform filter. The <cite>weight</cite> option provides a better result, but is much
 slower (an additional 10 minutes on a single exposure) and should only be
 run in the complete sky subtraction case.</td>
 </tr>
@@ -178,20 +213,20 @@ eigenbasis.</td>
 the eigenvalues per spectrum</td>
 </tr>
 <tr class="row-even"><td>optimize</td>
-<td>&#8216;normal&#8217;</td>
+<td><cite>normal</cite></td>
 <td>A flag used to call the optimization method. The possible options are
-&#8216;normal&#8217;, &#8216;enhanced&#8217;, and &#8216;none&#8217;.</td>
+<cite>normal</cite>, <cite>enhanced</cite>, and <cite>none</cite>.</td>
 </tr>
 <tr class="row-odd"><td>nevals</td>
 <td>[]</td>
-<td>This option is used for the manual selection of the the number of eigenvectors
+<td>This option is used for the manual selection of the number of eigenvectors
 to be used. If this is used, the pevals is ignored. Provide either a single
 value that will be used for all of the segments, or a list of 11 values that
 will be used for each of the segments.</td>
 </tr>
 <tr class="row-even"><td>pevals</td>
 <td>[]</td>
-<td>This option is used for the manual selection of the the number of eigenvectors
+<td>This option is used for the manual selection of the number of eigenvectors
 to be used. This value is the percentage of the calculated
 eigenspectra/eigenvalues used per spectral segment. Provide either a single
 value that will be used for all of the segments, or a list of 11 values that
@@ -212,7 +247,7 @@ sources should be identified with an integer greater than or equal to 1.</td>
 </tr>
 <tr class="row-odd"><td>interactive</td>
 <td>False</td>
-<td>Setting this option to True will allow the user to pass out the zclass which
+<td>Setting this option to True will allow the user to pass out the <a class="reference internal" href="#zap.zclass" title="zap.zclass"><code class="xref py py-class docutils literal"><span class="pre">zclass</span></code></a> which
 contains all of the data and methods of ZAP. We describe this use below.</td>
 </tr>
 </tbody>
@@ -234,23 +269,25 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 <div class="section" id="sparse-field-case">
 <h2>Sparse Field Case<a class="headerlink" href="#sparse-field-case" title="Permalink to this headline">¶</a></h2>
 <p>As noted above, this case can be handled simply with the observed datacube itself, using:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">outcubefits</span><span class="o">=</span><span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>In both cases, the code will create a resulting processed datacube named &#8216;DATACUBE_ZAP.fits&#8217; and an SVD file named &#8216;ZAP_SVD.fits&#8217; in the current directory.</p>
+<p>In both cases, the code will create a resulting processed datacube named
+<code class="docutils literal"><span class="pre">DATACUBE_ZAP.fits</span></code> and an SVD file named <code class="docutils literal"><span class="pre">ZAP_SVD.fits</span></code> in the current
+directory.</p>
 </div>
 <div class="section" id="masked-processing">
 <h2>Masked Processing<a class="headerlink" href="#masked-processing" title="Permalink to this headline">¶</a></h2>
-<p>Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. Masks are defined to be &gt;= 1 on astronomical sources and 0 at the position of the sky. Set this parameter with the <tt class="docutils literal"><span class="pre">mask</span></tt> keyword</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;mask.fits&#39;</span><span class="p">)</span>
+<p>Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. Masks are defined to be &gt;= 1 on astronomical sources and 0 at the position of the sky. Set this parameter with the <code class="docutils literal"><span class="pre">mask</span></code> keyword</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">outcubefits</span><span class="o">=</span><span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;mask.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="filled-field-case">
 <h2>Filled Field Case<a class="headerlink" href="#filled-field-case" title="Permalink to this headline">¶</a></h2>
-<p>This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation.</p>
+<p>This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">zap</span><span class="o">.</span><span class="n">SVDoutput</span><span class="p">(</span><span class="s">&#39;Offset_Field_CUBE.fits&#39;</span><span class="p">,</span> <span class="n">svdfn</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="s">&#39;mask.fits&#39;</span><span class="p">)</span>
-<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;Source_cube.fits&#39;</span><span class="p">,</span> <span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">cfwidth</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;Source_cube.fits&#39;</span><span class="p">,</span> <span class="n">outcubefits</span><span class="o">=</span><span class="s">&#39;OUTPUT.fits&#39;</span><span class="p">,</span> <span class="n">extSVD</span><span class="o">=</span><span class="s">&#39;ZAP_SVD.fits&#39;</span><span class="p">,</span> <span class="n">cfwidth</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure.</p>
@@ -259,100 +296,180 @@ contains all of the data and methods of ZAP. We describe this use below.</td>
 <p>Aside from the main process, two functions are included that can be run outside of the entire zap process to facilitate some investigations.</p>
 <dl class="function">
 <dt id="zap.nancleanfits">
-<tt class="descclassname">zap.</tt><tt class="descname">nancleanfits</tt><big>(</big><em>musecubefits</em>, <em>outfn='NANCLEAN_CUBE.fits'</em>, <em>rejectratio=0.25</em>, <em>boxsz=1</em><big>)</big><a class="headerlink" href="#zap.nancleanfits" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">zap.</code><code class="descname">nancleanfits</code><span class="sig-paren">(</span><em>musecubefits</em>, <em>outfn='NANCLEAN_CUBE.fits'</em>, <em>rejectratio=0.25</em>, <em>boxsz=1</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.nancleanfits" title="Permalink to this definition">¶</a></dt>
 <dd><p>Detects NaN values in cube and removes them by replacing them with an
 interpolation of the nearest neighbors in the data cube. The positions in
 the cube are retained in nancube for later remasking.</p>
-<dl class="docutils">
-<dt>musecubefits <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Input FITS file, containing a cube with data in the first extension.</dd>
-<dt>outfn <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Output FITS file. Default to NANCLEAN_CUBE.fits</dd>
-<dt>rejectratio <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><dl class="first last docutils">
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>musecubefits</strong> : str</p>
+<blockquote>
+<div><p>Input FITS file, containing a cube with data in the first extension.</p>
+</div></blockquote>
+<p><strong>outfn</strong> : str</p>
+<blockquote>
+<div><p>Output FITS file. Default to NANCLEAN_CUBE.fits</p>
+</div></blockquote>
+<p><strong>rejectratio</strong> : float</p>
+<blockquote>
+<div><dl class="docutils">
 <dt>Defines a cutoff for the ratio of NAN to total pixels in a spaxel</dt>
-<dd>before the spaxel is avoided completely. Default to 0.25</dd>
-</dl>
+<dd><p class="first last">before the spaxel is avoided completely. Default to 0.25</p>
 </dd>
-<dt>boxsz <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd>Defines the number of pixels around the offending NaN pixel.
-Default to 1, which looks for the 26 nearest neighbors which
-is a 3x3x3 cube.</dd>
 </dl>
+</div></blockquote>
+<p><strong>boxsz</strong> : int</p>
+<blockquote class="last">
+<div><p>Defines the number of pixels around the offending NaN pixel.
+Default to 1, which looks for the 26 nearest neighbors which
+is a 3x3x3 cube.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="zap.wmedian">
-<tt class="descclassname">zap.</tt><tt class="descname">wmedian</tt><big>(</big><em>spec</em>, <em>wt</em>, <em>cfwidth=100</em><big>)</big><a class="headerlink" href="#zap.wmedian" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">zap.</code><code class="descname">wmedian</code><span class="sig-paren">(</span><em>spec</em>, <em>wt</em>, <em>cfwidth=100</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.wmedian" title="Permalink to this definition">¶</a></dt>
 <dd><p>Performs a weighted median filtering of a 1d spectrum</p>
 <p>Operates using a cumulative sum curve</p>
-<dl class="docutils">
-<dt>spec <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>Input 1d spectrum to be filtered</dd>
-<dt>wt <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>A spectrum of equal length as the input array to provide the weights.</dd>
-<dt>cfwidth <span class="classifier-delimiter">:</span> <span class="classifier">int or float</span></dt>
-<dd>Window size for the continuum filter, for the SVD computation.
-Default to 100.</dd>
-</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>spec</strong> : numpy.ndarray</p>
+<blockquote>
+<div><p>Input 1d spectrum to be filtered</p>
+</div></blockquote>
+<p><strong>wt</strong> : numpy.ndarray</p>
+<blockquote>
+<div><p>A spectrum of equal length as the input array to provide the weights.</p>
+</div></blockquote>
+<p><strong>cfwidth</strong> : int or float</p>
+<blockquote class="last">
+<div><p>Window size for the continuum filter, for the SVD computation.
+Default to 100.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="zap.SVDoutput">
+<code class="descclassname">zap.</code><code class="descname">SVDoutput</code><span class="sig-paren">(</span><em>musecubefits</em>, <em>svdoutputfits='ZAP_SVD.fits'</em>, <em>clean=True</em>, <em>zlevel='median'</em>, <em>cftype='weight'</em>, <em>cfwidth=100</em>, <em>mask=None</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.SVDoutput" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs the SVD decomposition of a datacube.</p>
+<p>This allows to use the SVD for a different datacube.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>musecubefits</strong> : str</p>
+<blockquote>
+<div><p>Input FITS file, containing a cube with data in the first extension.</p>
+</div></blockquote>
+<p><strong>svdoutputfits</strong> : str</p>
+<blockquote>
+<div><p>Output FITS file. Default to ZAP_SVD.fits</p>
+</div></blockquote>
+<p><strong>clean</strong> : bool</p>
+<blockquote>
+<div><p>If True (default value), the NaN values are cleaned. Spaxels with more
+then 25% of NaN values are removed, the others are replaced with an
+interpolation from the neighbors.</p>
+</div></blockquote>
+<p><strong>zlevel</strong> : str</p>
+<blockquote>
+<div><p>Method for the zeroth order sky removal: <cite>none</cite>, <cite>sigclip</cite> or <cite>median</cite>
+(default).</p>
+</div></blockquote>
+<p><strong>cftype</strong> : str</p>
+<blockquote>
+<div><p>Method for the continuum filter: <cite>median</cite> or <cite>weight</cite> (default). For
+the <cite>weight</cite> method, a zeroth order sky is required (see <cite>zlevel</cite>).</p>
+</div></blockquote>
+<p><strong>cfwidth</strong> : int or float</p>
+<blockquote>
+<div><p>Window size for the continuum filter, default to 300.</p>
+</div></blockquote>
+<p><strong>mask</strong> : str</p>
+<blockquote class="last">
+<div><p>Path of a FITS file containing a mask (1 for objects, 0 for sky).</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>
 <div class="section" id="interactive-mode">
 <h3>Interactive mode<a class="headerlink" href="#interactive-mode" title="Permalink to this headline">¶</a></h3>
-<p>ZAP can also  be used interactively from within ipython.</p>
+<p>ZAP can also  be used interactively from within IPython</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">zap</span>
 <span class="n">zobj</span> <span class="o">=</span> <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The run method operates on the datacube, and retains all of the data and methods necessary to process a final data cube in a python class named zclass. You can elect to investigate the data product via the zclass, and even reprocess the cube with a different number of eigenspectra per region.  A workflow may go as follows:</p>
-<div class="highlight-python"><div class="highlight"><pre>import zap
-from matplotlib import pyplot as plt
+<p>The run method operates on the datacube, and retains all of the data and
+methods necessary to process a final data cube in a python class named
+<a class="reference internal" href="#zap.zclass" title="zap.zclass"><code class="xref py py-class docutils literal"><span class="pre">zclass</span></code></a>. You can elect to investigate the data product via the
+<a class="reference internal" href="#zap.zclass" title="zap.zclass"><code class="xref py py-class docutils literal"><span class="pre">zclass</span></code></a>, and even reprocess the cube with a different number of
+eigenspectra per region.  A workflow may go as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">zap</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
 
-zobj = zap.process(&#39;INPUT.fits&#39;, optimization=&#39;normal&#39;, interactive=True) #allow ZAP to run the optimize routine
-zobj.plotvarcurve(5) #plot the variance curves and the selection of the number of eigenspectra used
+<span class="c"># allow ZAP to run the optimize routine</span>
+<span class="n">zobj</span> <span class="o">=</span> <span class="n">zap</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="s">&#39;INPUT.fits&#39;</span><span class="p">,</span> <span class="n">optimization</span><span class="o">=</span><span class="s">&#39;normal&#39;</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 
-#plot a spectrum extracted from the original cube
-plt.figure()
-plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), &#39;b&#39;, alpha=0.3)
+<span class="c"># plot the variance curves and the selection of the number of eigenspectra used</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">plotvarcurve</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
 
-#plot a spectrum of the cleaned ZAP dataproduct
-plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2)), &#39;g&#39;)
+<span class="c"># plot a spectrum extracted from the original cube</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)),</span> <span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
 
-#choose just the first 3 spectra for all segmments
-zobj.reprocess(nevals=3)
+<span class="c"># plot a spectrum of the cleaned ZAP dataproduct</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)),</span> <span class="s">&#39;g&#39;</span><span class="p">)</span>
 
-#plot a spectrum extracted from the original cube
-plt.plot(zobj.cube[:,50:100,50:100].sum(axis=(1,2)), &#39;b&#39;, alpha=0.3)
+<span class="c"># choose just the first 3 spectra for all segmments</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">reprocess</span><span class="p">(</span><span class="n">nevals</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 
-#plot a spectrum of the cleaned ZAP dataproduct
-plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), &#39;g&#39;)
+<span class="c"># plot a spectrum extracted from the original cube</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)),</span> <span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
 
-#choose some number of modes by hand
-zobj.reprocess(nevals=[2,5,2,4,6,7,9,8,5])
+<span class="c"># plot a spectrum of the cleaned ZAP dataproduct</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))),</span> <span class="s">&#39;g&#39;</span><span class="p">)</span>
 
-#plot a spectrum
-plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), &#39;k&#39;)
+<span class="c"># choose some number of modes by hand</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">reprocess</span><span class="p">(</span><span class="n">nevals</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
 
-#Use the optimization algorithm to identify the best number of modes per segment
-zobj.optimize()
+<span class="c"># plot a spectrum</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))),</span> <span class="s">&#39;k&#39;</span><span class="p">)</span>
 
-#compare to the previous versions
-plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), &#39;r&#39;)
+<span class="c"># Use the optimization algorithm to identify the best number of modes per segment</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
 
-#identify a pixel in the dispersion axis that shows a residual feature in the original
-plt.figure()
-plt.matshow(zobj.cube[2903,:,:])
+<span class="c"># compare to the previous versions</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[:,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span><span class="mi">50</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))),</span> <span class="s">&#39;r&#39;</span><span class="p">)</span>
 
-#compare this to the zap dataproduct
-plt.figure()
-plt.matshow(zobj.cleancube[2903,:,:])
+<span class="c"># identify a pixel in the dispersion axis that shows a residual feature in the original</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">matshow</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cube</span><span class="p">[</span><span class="mi">2903</span><span class="p">,:,:])</span>
 
-#write the processed cube as a single extension fits
-zobj.writecube(&#39;DATACUBE_ZAP.fits&#39;)
+<span class="c"># compare this to the zap dataproduct</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">matshow</span><span class="p">(</span><span class="n">zobj</span><span class="o">.</span><span class="n">cleancube</span><span class="p">[</span><span class="mi">2903</span><span class="p">,:,:])</span>
 
-#or merge the zap datacube into the original input datacube, replacing the data extension
-zobj.writefits(outcubefits=&#39;DATACUBE_FINAL_ZAP.fits&#39;)
+<span class="c"># write the processed cube as a single extension fits</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">writecube</span><span class="p">(</span><span class="s">&#39;DATACUBE_ZAP.fits&#39;</span><span class="p">)</span>
+
+<span class="c"># or merge the zap datacube into the original input datacube, replacing the data extension</span>
+<span class="n">zobj</span><span class="o">.</span><span class="n">writefits</span><span class="p">(</span><span class="n">outcubefits</span><span class="o">=</span><span class="s">&#39;DATACUBE_FINAL_ZAP.fits&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -360,63 +477,153 @@ zobj.writefits(outcubefits=&#39;DATACUBE_FINAL_ZAP.fits&#39;)
 <h3>ZCLASS<a class="headerlink" href="#zclass" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="zap.zclass">
-<em class="property">class </em><tt class="descclassname">zap.</tt><tt class="descname">zclass</tt><big>(</big><em>musecubefits</em><big>)</big><a class="headerlink" href="#zap.zclass" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">zap.</code><code class="descname">zclass</code><span class="sig-paren">(</span><em>musecubefits</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass" title="Permalink to this definition">¶</a></dt>
 <dd><p>Main class to run each of the steps of ZAP.</p>
-<dl class="docutils">
-<dt>cleancube <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>The final datacube after removing all of the residual features.</dd>
-<dt>contarray <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>A 2D array containing the subtracted continuum per spaxel.</dd>
-<dt>cube <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>The original cube with the zlevel subtraction performed per spaxel.</dd>
-<dt>especeval <span class="classifier-delimiter">:</span> <span class="classifier">list of (eigenspectra, eval)</span></dt>
-<dd>A list containing the full set of eigenspectra and eigenvalues
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="12%" />
+<col width="25%" />
+<col width="63%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>cleancube</td>
+<td>numpy.ndarray</td>
+<td>The final datacube after removing all of the residual features.</td>
+</tr>
+<tr class="row-even"><td>contarray</td>
+<td>numpy.ndarray</td>
+<td>A 2D array containing the subtracted continuum per spaxel.</td>
+</tr>
+<tr class="row-odd"><td>cube</td>
+<td>numpy.ndarray</td>
+<td>The original cube with the zlevel subtraction performed per spaxel.</td>
+</tr>
+<tr class="row-even"><td>especeval</td>
+<td>list of (eigenspectra, eval)</td>
+<td>A list containing the full set of eigenspectra and eigenvalues
 generated by the SVD calculation that is used toy reconstruct the
-entire datacube.</dd>
-<dt>laxis <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>A 1d array containing the wavelength solution generated from the header
-parameters.</dd>
-<dt>wcs <span class="classifier-delimiter">:</span> <span class="classifier">astropy.wcs.WCS</span></dt>
-<dd>WCS object with the wavelength solution.</dd>
-<dt>lranges <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd>A list of the wavelength bin limits used in segmenting the sepctrum
-for SVD.</dd>
-<dt>nancube <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>A 3d boolean datacube containing True in voxels where a NaN value was
-replaced with an interpolation.</dd>
-<dt>nevals <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>A 1d array containing the number of eigenvalues used per segment to
-reconstruct the residuals.</dd>
-<dt>normstack <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>A normalized version of the datacube decunstructed into a 2d array.</dd>
-<dt>varlist <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>An array for each segment with the variance curve, calculated for the
-optimize method.</dd>
-<dt>pranges <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>The pixel indices of the bounding regions for each spectral segment.</dd>
-<dt>recon <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>A 2d array containing the reconstructed emission line residuals.</dd>
-<dt>run_clean <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
-<dd>Boolean that indicates that the NaN cleaning method was used.</dd>
-<dt>run_zlevel <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
-<dd>Boolean indicating that the zero level correction was used.</dd>
-<dt>stack <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>The datacube deconstructed into a 2d array for use in the the SVD.</dd>
-<dt>subespeceval <span class="classifier-delimiter">:</span> <span class="classifier">list of (eigenspectra, eval)</span></dt>
-<dd>The subset of eigenvalues and eigenspectra used to reconstruct the sky
-residuals.</dd>
-<dt>variancearray <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>A list of length nsegments containing variances calculated per spaxel
-used for normalization</dd>
-<dt>y,x <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>The position in the cube of the spaxels that are in the 2d
-deconstructed stack</dd>
-<dt>zlsky <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd>A 1d array containing the result of the zero level subtraction</dd>
-</dl>
+entire datacube.</td>
+</tr>
+<tr class="row-odd"><td>laxis</td>
+<td>numpy.ndarray</td>
+<td>A 1d array containing the wavelength solution generated from the header
+parameters.</td>
+</tr>
+<tr class="row-even"><td>wcs</td>
+<td>astropy.wcs.WCS</td>
+<td>WCS object with the wavelength solution.</td>
+</tr>
+<tr class="row-odd"><td>lranges</td>
+<td>list</td>
+<td>A list of the wavelength bin limits used in segmenting the sepctrum
+for SVD.</td>
+</tr>
+<tr class="row-even"><td>nancube</td>
+<td>numpy.ndarray</td>
+<td>A 3d boolean datacube containing True in voxels where a NaN value was
+replaced with an interpolation.</td>
+</tr>
+<tr class="row-odd"><td>nevals</td>
+<td>numpy.ndarray</td>
+<td>A 1d array containing the number of eigenvalues used per segment to
+reconstruct the residuals.</td>
+</tr>
+<tr class="row-even"><td>normstack</td>
+<td>numpy.ndarray</td>
+<td>A normalized version of the datacube decunstructed into a 2d array.</td>
+</tr>
+<tr class="row-odd"><td>varlist</td>
+<td>numpy.ndarray</td>
+<td>An array for each segment with the variance curve, calculated for the
+optimize method.</td>
+</tr>
+<tr class="row-even"><td>pranges</td>
+<td>numpy.ndarray</td>
+<td>The pixel indices of the bounding regions for each spectral segment.</td>
+</tr>
+<tr class="row-odd"><td>recon</td>
+<td>numpy.ndarray</td>
+<td>A 2d array containing the reconstructed emission line residuals.</td>
+</tr>
+<tr class="row-even"><td>run_clean</td>
+<td>bool</td>
+<td>Boolean that indicates that the NaN cleaning method was used.</td>
+</tr>
+<tr class="row-odd"><td>run_zlevel</td>
+<td>bool</td>
+<td>Boolean indicating that the zero level correction was used.</td>
+</tr>
+<tr class="row-even"><td>stack</td>
+<td>numpy.ndarray</td>
+<td>The datacube deconstructed into a 2d array for use in the the SVD.</td>
+</tr>
+<tr class="row-odd"><td>subespeceval</td>
+<td>list of (eigenspectra, eval)</td>
+<td>The subset of eigenvalues and eigenspectra used to reconstruct the sky
+residuals.</td>
+</tr>
+<tr class="row-even"><td>variancearray</td>
+<td>numpy.ndarray</td>
+<td>A list of length nsegments containing variances calculated per spaxel
+used for normalization</td>
+</tr>
+<tr class="row-odd"><td>y,x</td>
+<td>numpy.ndarray</td>
+<td>The position in the cube of the spaxels that are in the 2d
+deconstructed stack</td>
+</tr>
+<tr class="row-even"><td>zlsky</td>
+<td>numpy.ndarray</td>
+<td>A 1d array containing the result of the zero level subtraction</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">chooseevals</span></code></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">make_contcube</span></code></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">mergefits</span></code></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">optimize</span></code></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">plotvarcurve</span></code></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">reconstruct</span></code></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">remold</span></code></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">reprocess</span></code></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">writeSVD</span></code></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">writecube</span></code></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">writeskycube</span></code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="zap.zclass.chooseevals">
-<tt class="descname">chooseevals</tt><big>(</big><em>nevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>pevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.chooseevals" title="Permalink to this definition">¶</a></dt>
+<code class="descname">chooseevals</code><span class="sig-paren">(</span><em>nevals=[]</em>, <em>pevals=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.chooseevals" title="Permalink to this definition">¶</a></dt>
 <dd><p>Choose the number of eigenspectra/evals to use for reconstruction.</p>
 <p>User supplies the number of eigen spectra to be used (neval) or the
 percentage of the eigenspectra that were calculated (peval) from each
@@ -427,20 +634,20 @@ or provide an array that defines neval or peval per segment.</p>
 
 <dl class="method">
 <dt id="zap.zclass.make_contcube">
-<tt class="descname">make_contcube</tt><big>(</big><big>)</big><a class="headerlink" href="#zap.zclass.make_contcube" title="Permalink to this definition">¶</a></dt>
+<code class="descname">make_contcube</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.make_contcube" title="Permalink to this definition">¶</a></dt>
 <dd><p>Remold the continuum array so it can be investigated.</p>
 <p>Takes the continuum stack and returns it into a familiar cube form.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.mergefits">
-<tt class="descname">mergefits</tt><big>(</big><em>outcubefits</em><big>)</big><a class="headerlink" href="#zap.zclass.mergefits" title="Permalink to this definition">¶</a></dt>
+<code class="descname">mergefits</code><span class="sig-paren">(</span><em>outcubefits</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.mergefits" title="Permalink to this definition">¶</a></dt>
 <dd><p>Merge the ZAP cube into the full muse datacube and write.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.optimize">
-<tt class="descname">optimize</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#zap.zclass.optimize" title="Permalink to this definition">¶</a></dt>
+<code class="descname">optimize</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.optimize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Function to optimize the number of components used to characterize
 the residuals.</p>
 <p>This function calculates the variance per segment with an increasing
@@ -452,40 +659,40 @@ removal of astronomical features rather than emission line residuals.</p>
 
 <dl class="method">
 <dt id="zap.zclass.reconstruct">
-<tt class="descname">reconstruct</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#zap.zclass.reconstruct" title="Permalink to this definition">¶</a></dt>
+<code class="descname">reconstruct</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.reconstruct" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reconstruct the residuals from a given set of eigenspectra and
 eigenvalues</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.remold">
-<tt class="descname">remold</tt><big>(</big><big>)</big><a class="headerlink" href="#zap.zclass.remold" title="Permalink to this definition">¶</a></dt>
+<code class="descname">remold</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.remold" title="Permalink to this definition">¶</a></dt>
 <dd><p>Subtracts the reconstructed residuals and places the cleaned
 spectra into the duplicated datacube.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.reprocess">
-<tt class="descname">reprocess</tt><big>(</big><em>pevals=</em>, <span class="optional">[</span><span class="optional">]</span><em>nevals=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#zap.zclass.reprocess" title="Permalink to this definition">¶</a></dt>
+<code class="descname">reprocess</code><span class="sig-paren">(</span><em>pevals=[]</em>, <em>nevals=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.reprocess" title="Permalink to this definition">¶</a></dt>
 <dd><p>A method that redoes the eigenvalue selection, reconstruction, and
 remolding of the data.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.writeSVD">
-<tt class="descname">writeSVD</tt><big>(</big><em>svdoutputfits='ZAP_SVD.fits'</em><big>)</big><a class="headerlink" href="#zap.zclass.writeSVD" title="Permalink to this definition">¶</a></dt>
+<code class="descname">writeSVD</code><span class="sig-paren">(</span><em>svdoutputfits='ZAP_SVD.fits'</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.writeSVD" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write the SVD to an individual fits file.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.writecube">
-<tt class="descname">writecube</tt><big>(</big><em>outcubefits='DATACUBE_ZAP.fits'</em><big>)</big><a class="headerlink" href="#zap.zclass.writecube" title="Permalink to this definition">¶</a></dt>
+<code class="descname">writecube</code><span class="sig-paren">(</span><em>outcubefits='DATACUBE_ZAP.fits'</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.writecube" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write the processed datacube to an individual fits file.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="zap.zclass.writeskycube">
-<tt class="descname">writeskycube</tt><big>(</big><em>skycubefits='SKYCUBE_ZAP.fits'</em><big>)</big><a class="headerlink" href="#zap.zclass.writeskycube" title="Permalink to this definition">¶</a></dt>
+<code class="descname">writeskycube</code><span class="sig-paren">(</span><em>skycubefits='SKYCUBE_ZAP.fits'</em><span class="sig-paren">)</span><a class="headerlink" href="#zap.zclass.writeskycube" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write the processed datacube to an individual fits file.</p>
 </dd></dl>
 
@@ -499,7 +706,7 @@ remolding of the data.</p>
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
@@ -521,12 +728,14 @@ remolding of the data.</p>
 </li>
 </ul>
 
-  <h3>This Page</h3>
-  <ul class="this-page-menu">
-    <li><a href="_sources/index.txt"
-           rel="nofollow">Show Source</a></li>
-  </ul>
-<div id="searchbox" style="display: none">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
       <input type="text" name="q" />
@@ -543,18 +752,18 @@ remolding of the data.</p>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="#">zap 1.0 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">zap 1.0.dev71 documentation</a> &raquo;</li> 
       </ul>
     </div>
-    <div class="footer">
+    <div class="footer" role="contentinfo">
         &copy; Copyright 2014, Kurt Soto, Simon Lilly.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
   </body>
 </html>
