@@ -1108,20 +1108,24 @@ def _ivarcurve(i, istack, especeval=None, variancearray=None):
 
     iprecon = np.zeros_like(istack)
     eigenspectra, evals = especeval[i]
+    variance = variancearray[i]
     ivarlist = []
     totalnevals = int(np.round(evals.shape[0] * 0.25))
 
+    progress_step = int(totalnevals * .2)
+    to_percent = 100. / (totalnevals - 1.)
+    info = logger.info
+
     for nevals in range(totalnevals):
-        if nevals % (totalnevals * .2) <= 1:
-            logger.info('Seg %d: %d%% complete ',
-                        i, int(nevals / (totalnevals - 1.) * 100.))
+        if nevals and (nevals % progress_step) == 0:
+            info('Seg %d: %d%% complete ', i, int(nevals * to_percent))
 
         eig = eigenspectra[:, nevals]
         ev = evals[nevals, :]
         # broadcast evals on evects and sum
         iprecon += (eig[:, np.newaxis] * ev[np.newaxis, :])
 
-        icleanstack = istack - (iprecon * variancearray[i])
+        icleanstack = istack - (iprecon * variance)
         # calculate the variance on the cleaned segment
         ivarlist.append(np.var(icleanstack))
 
