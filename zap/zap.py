@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 
 
 def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
-            zlevel='median', cftype='weight', cfwidthEV=100, cfwidthSP=50,
+            zlevel='median', cftype='weight', cfwidthSVD=100, cfwidthSP=50,
             pevals=[], nevals=[], optimizeType='normal', extSVD=None,
             skycubefits=None, svdoutputfits='ZAP_SVD.fits', mask=None,
             interactive=False):
@@ -84,7 +84,7 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
     cftype : str
         Method for the continuum filter: `median` or `weight` (default). For
         the `weight` method, a zeroth order sky is required (see `zlevel`).
-    cfwidthEV : int or float
+    cfwidthSVD : int or float
         Window size for the continuum filter, for the SVD computation.
         Default to 100.
     cfwidthSP : int or float
@@ -138,11 +138,11 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
         raise ValueError('extSVD and mask parameters are incompatible: if mask'
                          ' must be used, then the SVD has to be recomputed')
 
-    if mask is not None or cfwidthEV != cfwidthSP:
+    if mask is not None or cfwidthSVD != cfwidthSP:
         # In this case we have to run SVDoutput first to compute the SVD
         SVDoutput(musecubefits, svdoutputfits=svdoutputfits,
                   clean=clean, zlevel=zlevel, cftype=cftype,
-                  cfwidth=cfwidthEV, mask=mask)
+                  cfwidth=cfwidthSVD, mask=mask)
         extSVD = svdoutputfits
 
     zobj = zclass(musecubefits)
