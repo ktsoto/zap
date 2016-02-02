@@ -61,6 +61,13 @@
 </ul>
 <p>Many linear algebra operations are performed in ZAP, so it can be beneficial to use an alternative BLAS package. In the Anaconda distribution, the default BLAS comes with Numpy linked to OpenBlas, which can amount to a 20% speedup of ZAP.</p>
 </div>
+<div class="section" id="steps">
+<h2>Steps<a class="headerlink" href="#steps" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>Once the code is downloaded, cd into the zap directory and install via::</dt>
+<dd>python setup.py install</dd>
+</dl>
+</div>
 </div>
 <div class="section" id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
@@ -333,6 +340,17 @@ Default to 100.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="command-line-interface">
+<h1>Command Line Interface<a class="headerlink" href="#command-line-interface" title="Permalink to this headline">¶</a></h1>
+<p>ZAP can also be used from the command line:</p>
+<div class="highlight-python"><div class="highlight"><pre>python -m zap INPUT_CUBE.fits
+</pre></div>
+</div>
+<p>More information use of the command line interface can be found with the command</p>
+<div class="highlight-python"><div class="highlight"><pre>python -m zap -h
+</pre></div>
+</div>
+</div>
 <div class="section" id="interactive-mode">
 <h1>Interactive mode<a class="headerlink" href="#interactive-mode" title="Permalink to this headline">¶</a></h1>
 <p>ZAP can also  be used interactively from within IPython</p>
@@ -602,6 +620,7 @@ remolding of the data.</p>
 <li><a class="reference internal" href="#">Welcome to ZAP&#8217;s documentation!</a></li>
 <li><a class="reference internal" href="#installation">Installation</a><ul>
 <li><a class="reference internal" href="#requirements">Requirements</a></li>
+<li><a class="reference internal" href="#steps">Steps</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#examples">Examples</a><ul>
@@ -610,6 +629,7 @@ remolding of the data.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#extra-functions">Extra Functions</a></li>
+<li><a class="reference internal" href="#command-line-interface">Command Line Interface</a></li>
 <li><a class="reference internal" href="#interactive-mode">Interactive mode</a></li>
 </ul>
 

@@ -24,6 +24,12 @@ ZAP requires the following packages:
 
 Many linear algebra operations are performed in ZAP, so it can be beneficial to use an alternative BLAS package. In the Anaconda distribution, the default BLAS comes with Numpy linked to OpenBlas, which can amount to a 20% speedup of ZAP.
 
+Steps
+-----
+
+Once the code is downloaded, cd into the zap directory and install via::
+   python setup.py install
+
 
 Examples
 ========
@@ -91,6 +97,18 @@ Aside from the main process, three functions are included that can be run outsid
 .. autofunction:: zap.nancleanfits
 
 .. autofunction:: zap.wmedian
+
+		  
+Command Line Interface
+======================
+
+ZAP can also be used from the command line::
+  
+  python -m zap INPUT_CUBE.fits
+
+More information use of the command line interface can be found with the command ::
+  
+  python -m zap -h
 
 
 Interactive mode
@@ -165,3 +183,5 @@ ZCLASS
 ======
 .. autoclass:: zap.zclass
    :members:
+
+
