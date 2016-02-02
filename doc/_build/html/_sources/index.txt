@@ -28,10 +28,6 @@ Many linear algebra operations are performed in ZAP, so it can be beneficial to 
 Examples
 ========
 
-The main function is ``zap.process``:
-
-.. autofunction:: zap.process
-
 In its most hands-off form, ZAP can take an input fits datacube, operate on it, and output a final fits datacube::
 
   import zap
@@ -39,65 +35,11 @@ In its most hands-off form, ZAP can take an input fits datacube, operate on it, 
 
 Care should be taken, however, since this case assumes a sparse field, and better results can be obtained by applying masks.
 
-There are a number of options that can be passed to the code which we tabulate here, and describe in several different use cases.
+The main function is ``zap.process``:
 
-===========  ===================  ==============================================================================
-Keyword      Default              Function
-===========  ===================  ==============================================================================
-outcubefits  `DATACUBE_ZAP.fits`  The fits filename for the output datacube.
+There are a number of options that can be passed to the code which we describe here:
 
-clean        True                 Interpolates over NaN values in the datacube to allow processing on all
-                                  spectra. The NaN values are replaced in the final datacube.
-                                  Any spaxel that includes a NaN pixel will hinder the calculation, so this
-                                  step is used to maximize the number of contributors. The NaN values are
-                                  reinserted into the final datacube.
-
-zlevel       `median`             This option is used to define the method for determining the zeroth order
-                                  subtraction of the sky. This is used to remove any systematic sky feature
-                                  that exists over the whole field. Options are `median`, `sigclip`, and `none`.
-                                  The `none` option should only be applied when ZAP is applied to enhance a
-                                  previous sky subtraction.
-
-cftype       `weight`             The type of filtering that is applied to remove the continuum.  `weight`
-                                  refers to the weighted median, which uses the calculated zlevel sky as the
-                                  weight. `median` refers to a rolling median filter with a nested small
-                                  uniform filter. The `weight` option provides a better result, but is much
-                                  slower (an additional 10 minutes on a single exposure) and should only be
-                                  run in the complete sky subtraction case.
-
-cfwidthSP    100                  Size of the filterbox used to remove the continuum features for creating the
-                                  eigenbasis.
-
-cfwidthEV    50                   Size of the filterbox used to remove the continuum features for calculating
-                                  the eigenvalues per spectrum
-
-optimize     `normal`             A flag used to call the optimization method. The possible options are
-                                  `normal`, `enhanced`, and `none`.
-
-nevals       []                   This option is used for the manual selection of the number of eigenvectors
-                                  to be used. If this is used, the pevals is ignored. Provide either a single
-                                  value that will be used for all of the segments, or a list of 11 values that
-                                  will be used for each of the segments.
-
-pevals       []                   This option is used for the manual selection of the number of eigenvectors
-                                  to be used. This value is the percentage of the calculated
-                                  eigenspectra/eigenvalues used per spectral segment. Provide either a single
-                                  value that will be used for all of the segments, or a list of 11 values that
-                                  will be used for each of the segments.
-
-extSVD       ''                   An optional parameter that allows the input of a externally calculated
-                                  eigenbasis as well as a zlevel. This can be constructed from either a masked
-                                  version of a sparse field case, or an external sky frame.
-
-mask         ''                   A 2D fits image to exclude regions that may contaminate the zlevel or
-                                  eigenspectra. This image should be constructed from the datacube itself to
-                                  match the dimensionality. Sky regions should be marked as 0, and astronomical
-                                  sources should be identified with an integer greater than or equal to 1.
-
-interactive  False                Setting this option to True will allow the user to pass out the :class:`~zap.zclass` which
-                                  contains all of the data and methods of ZAP. We describe this use below.
-
-===========  ===================  ==============================================================================
+.. autofunction:: zap.process
 
 The code can handle datacubes trimmed in wavelength space. Since the code uses the correlation of segments of the emission line spectrum, it is best to trim the cube at specific wavelengths. The cube can include any connected subset of these segments. (for example 6400 - 8200 Angstroms) ::
 
@@ -117,45 +59,40 @@ The code can handle datacubes trimmed in wavelength space. Since the code uses t
 Sparse Field Case
 -----------------
 
-As noted above, this case can be handled simply with the observed datacube itself, using::
+This case specifically refers to the case where the sky can be measured in the sky frame itself, using::
 
   zap.process('INPUT.fits', outcubefits='OUTPUT.fits')
 
-In both cases, the code will create a resulting processed datacube named
-``DATACUBE_ZAP.fits`` and an SVD file named ``ZAP_SVD.fits`` in the current
-directory.
+In both cases, the code will create a resulting processed datacube named ``DATACUBE_ZAP.fits`` and an SVD file named ``ZAP_SVD.fits`` in the current directory. While this can work well in the case of very faint sources, masks can improve the results.
 
-Masked Processing
------------------
-
-Another option is to use a mask to isolate a sky within an exposure to pre-determine the zlevel and eigenspectra, which is then passed back into zap. This approach will allow the inclusion of a mask file, which is a 2d fits image matching the spatial dimensions of the input datacube. Masks are defined to be >= 1 on astronomical sources and 0 at the position of the sky. Set this parameter with the ``mask`` keyword ::
+For the sparse field case, a mask file can be included, which is a 2d fits image matching the spatial dimensions of the input datacube. Masks are defined to be >= 1 on astronomical sources and 0 at the position of the sky. Set this parameter with the ``mask`` keyword ::
 
   zap.process('INPUT.fits', outcubefits='OUTPUT.fits', mask='mask.fits')
 
 Filled Field Case
 -----------------
 
-This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation::
+This approach also can address the saturated field case and is robust in the case of strong emission lines, in this case the input is an offset sky observation. To achieve this, we calculate the SVD on an external sky frame using the function ``zap.SVDoutput``
+
+.. autofunction:: zap.SVDoutput
+
+An example of running the code in this way is as follows::
 
   zap.SVDoutput('Offset_Field_CUBE.fits', svdfn='ZAP_SVD.fits', mask='mask.fits')
-  zap.process('Source_cube.fits', outcubefits='OUTPUT.fits', extSVD='ZAP_SVD.fits', cfwidth=50)
+  zap.process('Source_cube.fits', outcubefits='OUTPUT.fits', extSVD='ZAP_SVD.fits', cfwidthSP=50)
 
-The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure.
+The integration time of this frame does not need to be the same as the object exposure, but rather just a 2-3 minute exposure. Often residuals can be further reduced by changing `cfwidthSP` to a smaller value. However, this parameter should not be reduced to smaller than 15 pixels.
 
-===============
 Extra Functions
 ===============
 
-Aside from the main process, two functions are included that can be run outside of the entire zap process to facilitate some investigations.
+Aside from the main process, three functions are included that can be run outside of the entire zap process to facilitate some investigations.
 
 .. autofunction:: zap.nancleanfits
 
 .. autofunction:: zap.wmedian
 
-.. autofunction:: zap.SVDoutput
 
-
-================
 Interactive mode
 ================
 

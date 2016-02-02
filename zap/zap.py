@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 ###############################################################################
 
 
-def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
+def process(musecubefits, outcubefits='DATACUBE_ZAP.fits', clean=True,
             zlevel='median', cftype='weight', cfwidthSVD=100, cfwidthSP=50,
             pevals=[], nevals=[], optimizeType='normal', extSVD=None,
             skycubefits=None, svdoutputfits='ZAP_SVD.fits', mask=None,
@@ -73,11 +73,13 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
         Input FITS file, containing a cube with data in the first extension.
     outcubefits : str
         Output FITS file, based on the input one to propagate all header
-        information and other extensions. Default to `DATACUBE_FINAL_ZAP.fits`.
+        information and other extensions. Default to `DATACUBE_ZAP.fits`.
     clean : bool
         If True (default value), the NaN values are cleaned. Spaxels with more
         then 25% of NaN values are removed, the others are replaced with an
-        interpolation from the neighbors.
+        interpolation from the neighbors. The NaN values are reinserted into
+        the final datacube. If set to False, any spaxel with a NaN value will
+        be ignored.
     zlevel : str
         Method for the zeroth order sky removal: `none`, `sigclip` or `median`
         (default).
@@ -88,7 +90,10 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
         Window size for the continuum filter, for the SVD computation.
         Default to 100.
     cfwidthSP : int or float
-        Window size for the continuum filter. Default to 50.
+        Window size for the continuum filter used to remove the continuum
+        features for calculating the eigenvalues per spectrum. Smaller values
+        better trace the sources. An optimal range of is typically
+        20 - 50 pixels. Default to 50.
     optimizeType : str
         Optimization method to compute the number of eigenspectra used for each
         segment: `none`, `normal` (default), `enhanced`. If `none`, the number
@@ -96,8 +101,14 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
         `normal` is used.
     pevals : list
         Allow to specify the percentage of eigenspectra used for each segment.
+        If this is used, the pevals is ignored. Provide either a single value
+        that will be used for all of the segments, or a list of 11 values that
+        will be used for each of the segments.
     nevals : list
         Allow to specify the number of eigenspectra used for each segment.
+        If this is used, the pevals is ignored. Provide either a single value
+        that will be used for all of the segments, or a list of 11 values that
+        will be used for each of the segments.
     extSVD : str
         Path of an input FITS file containing a SVD computed by the
         :func:`~zap.SVDoutput` function. Otherwise the SVD is computed.
@@ -105,7 +116,13 @@ def process(musecubefits, outcubefits='DATACUBE_FINAL_ZAP.fits', clean=True,
         Path for the optional output of the sky that is subtracted from the
         cube. This is simply the input cube minus the output cube.
     svdoutputfits : str
-        Output FITS file. Default to `ZAP_SVD.fits`.
+        Output FITS file containing the eigenbasis. Default to `ZAP_SVD.fits`.
+    mask : str
+        A 2D fits image to exclude regions that may contaminate the zlevel or
+        eigenspectra. This image should be constructed from the datacube itself
+        to match the dimensionality. Sky regions should be marked as 0, and
+        astronomical sources should be identified with an integer greater than
+        or equal to 1. Default to None.
     interactive : bool
         If True, a :class:`~zap.zclass` object containing all information on
         the ZAP process is returned, and can be used to explore the
