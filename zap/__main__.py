@@ -32,7 +32,7 @@ def main():
     addarg('--extsvd',
            help='Path of an input FITS file containing a SVD computed in a '
            'previous step')
-    addarg('--cfwidthEV', type=int, default=100,
+    addarg('--cfwidthSVD', type=int, default=100,
            help='window size for the continuum filter for the SVD computation')
     addarg('--cfwidthSP', type=int, default=50,
            help='window size for the continuum filter')
@@ -51,7 +51,7 @@ def main():
         process(
             args.incube, outcubefits=args.outcube, clean=not args.no_clean,
             skycubefits=args.skycube, svdoutputfits=args.svdoutput,
-            extSVD=args.extsvd, cfwidthEV=args.cfwidthEV,
+            extSVD=args.extsvd, cfwidthSVD=args.cfwidthSVD,
             cfwidthSP=args.cfwidthSP, zlevel=args.zlevel, cftype=args.cftype)
     except KeyboardInterrupt:
         sys.exit('Interrupted!')
