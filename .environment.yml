@@ -1,0 +1,7 @@
+name: astropy
+
+dependencies:
+  - astropy
+  - numpy
+  - numpydoc
+  - scipy
