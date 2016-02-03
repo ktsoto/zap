@@ -25,8 +25,8 @@ def main():
            help='disable NaN values interpolation')
     addarg('--outcube', '-o', default='DATACUBE_FINAL_ZAP.fits',
            help='output datacube path')
-    addarg('--skycube',
-           help='Sky datacube path')
+    addarg('--mask', help='Mask file to exclude sources')
+    addarg('--skycube', help='Sky datacube path')
     addarg('--svdoutput', default='ZAP_SVD.fits',
            help='output SVD FITS file')
     addarg('--extsvd',
@@ -51,7 +51,7 @@ def main():
         process(
             args.incube, outcubefits=args.outcube, clean=not args.no_clean,
             skycubefits=args.skycube, svdoutputfits=args.svdoutput,
-            extSVD=args.extsvd, cfwidthSVD=args.cfwidthSVD,
+            mask=args.mask, extSVD=args.extsvd, cfwidthSVD=args.cfwidthSVD,
             cfwidthSP=args.cfwidthSP, zlevel=args.zlevel, cftype=args.cftype)
     except KeyboardInterrupt:
         sys.exit('Interrupted!')
