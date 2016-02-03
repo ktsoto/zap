@@ -1080,6 +1080,7 @@ def wmedian(spec, wt, cfwidth=100):
     # ignore the warning (feature not a bug)
     old_settings = np.seterr(divide='ignore')
     spec = np.pad(spec, (cfwidth, cfwidth), 'constant', constant_values=0)
+    wt = np.abs(wt)
     wt = np.pad(wt, (cfwidth, cfwidth), 'constant',
                 constant_values=(np.min(wt) / 1000., np.min(wt) / 1000.))
 
