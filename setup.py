@@ -39,9 +39,9 @@ setup(
     description=('ZAP (the Zurich Atmosphere Purge) is a high precision sky'
                  ' subtraction tool'),
     author='Kurt Soto',
-    author_email='sotok@phys.ethz.ch',
-    # url='',
-    # license='',
+    author_email='kurt.soto@phys.ethz.ch',
+    url='https://github.com/ktsoto/zap',
+    license='MIT',
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
