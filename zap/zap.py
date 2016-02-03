@@ -1,25 +1,25 @@
 # ZAP - Zurich Atmosphere Purge
 #
 #    Copyright (c) 2016 Kurt Soto
-#    
-#    Permission is hereby granted, free of charge, to any person obtaining a copy
-#    of this software and associated documentation files (the "Software"), to deal
-#    in the Software without restriction, including without limitation the rights
-#    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#    copies of the Software, and to permit persons to whom the Software is
-#    furnished to do so, subject to the following conditions:
-#    
-#    The above copyright notice and this permission notice shall be included in all
-#    copies or substantial portions of the Software.
-#    
+#
+#    Permission is hereby granted, free of charge, to any person obtaining
+#    a copy of this software and associated documentation files (the
+#    "Software"), to deal in the Software without restriction, including
+#    without limitation the rights to use, copy, modify, merge, publish,
+#    distribute, sublicense, and/or sell copies of the Software, and to permit
+#    persons to whom the Software is furnished to do so, subject to the
+#    following conditions:
+#
+#    The above copyright notice and this permission notice shall be included in
+#    all copies or substantial portions of the Software.
+#
 #    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 #    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#    SOFTWARE.
-
+#    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+#    DEALINGS IN THE SOFTWARE.
 
 from __future__ import absolute_import, division, print_function
 
@@ -39,9 +39,9 @@ from time import time
 
 from .version import __version__
 
-# Limits if the segments in Angstroms
+# Limits of the segments in Angstroms
 SKYSEG = [0, 5400, 5850, 6440, 6750, 7200, 7700, 8265, 8602, 8731, 9275, 10000]
-
+# Number of available CPUs
 NCPU = cpu_count()
 PY2 = sys.version_info[0] == 2
 
@@ -148,7 +148,8 @@ def process(musecubefits, outcubefits='DATACUBE_ZAP.fits', clean=True,
     # check if outcubefits/skycubefits exists before beginning
     check_file_exists(outcubefits)
     check_file_exists(skycubefits)
-    check_file_exists(svdoutputfits)
+    if extSVD is None:
+        check_file_exists(svdoutputfits)
 
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
@@ -161,8 +162,11 @@ def process(musecubefits, outcubefits='DATACUBE_ZAP.fits', clean=True,
         raise ValueError('extSVD and mask parameters are incompatible: if mask'
                          ' must be used, then the SVD has to be recomputed')
 
-    if mask is not None or cfwidthSVD != cfwidthSP:
-        # In this case we have to run SVDoutput first to compute the SVD
+    if mask is not None or (extSVD is None and cfwidthSVD != cfwidthSP):
+        # Compute the SVD separately, only if a mask is given, or if the
+        # cfwidth values differ and extSVD is not given. Otherwise, the SVD
+        # will be computed in the _run method, which allows to avoid running
+        # twice the zlevel and continuumfilter steps.
         SVDoutput(musecubefits, svdoutputfits=svdoutputfits,
                   clean=clean, zlevel=zlevel, cftype=cftype,
                   cfwidth=cfwidthSVD, mask=mask)
@@ -225,9 +229,6 @@ def SVDoutput(musecubefits, svdoutputfits='ZAP_SVD.fits', clean=True,
         raise ValueError('Weighted median requires a zlevel calculation')
 
     zobj = zclass(musecubefits)
-
-    # number of segments
-    nseg = len(zobj.pranges)
 
     # clean up the nan values
     if clean:
@@ -797,8 +798,11 @@ class zclass(object):
                 std2 = deriv2[ind:].std() * 2
                 # look for crossing points. When they get within 1 sigma of
                 # mean in settled region.
-                cross1 = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
-                cross2 = np.append([False, False], np.abs(deriv2) <= (mn2 + std2))  # pad by 2 for 2nd
+                # pad by 1 for 1st deriv
+                cross1 = np.append([False], deriv >= (mn1 - std1))
+                # pad by 2 for 2nd
+                cross2 = np.append([False, False],
+                                   np.abs(deriv2) <= (mn2 + std2))
                 cross = np.logical_or(cross1, cross2)
             else:
                 # statistics on the derivatives
@@ -807,7 +811,8 @@ class zclass(object):
                 std1 = deriv[ind:].std()
                 mn2 = deriv2[ind:].mean()
                 std2 = deriv2[ind:].std()
-                cross = np.append([False], deriv >= (mn1 - std1))  # pad by 1 for 1st deriv
+                # pad by 1 for 1st deriv
+                cross = np.append([False], deriv >= (mn1 - std1))
 
             self.nevals[i] = np.where(cross)[0][0]
 
