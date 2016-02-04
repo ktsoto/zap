@@ -92,7 +92,7 @@ The integration time of this frame does not need to be the same as the object ex
 Extra Functions
 ===============
 
-Aside from the main process, three functions are included that can be run outside of the entire zap process to facilitate some investigations.
+Aside from the main process, two functions are included that can be run outside of the entire zap process to facilitate some investigations.
 
 .. autofunction:: zap.nancleanfits
 
@@ -153,7 +153,7 @@ eigenspectra per region.  A workflow may go as follows:
   plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'g')
 
   # choose some number of modes by hand
-  zobj.reprocess(nevals=[2,5,2,4,6,7,9,8,5])
+  zobj.reprocess(nevals=[2,5,2,4,6,7,9,8,5,3,5])
 
   # plot a spectrum
   plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2))), 'k')
