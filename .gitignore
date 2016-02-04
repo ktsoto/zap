@@ -1,5 +1,7 @@
 *.pyc
 *.egg-info/
+build/
+dist/
 zap/#zap.py#
 zap/.#zap.py
 zap/_githash.py
