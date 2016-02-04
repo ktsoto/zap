@@ -9,7 +9,7 @@ Welcome to ZAP's documentation!
 .. toctree::
    :maxdepth: 2
 
-ZAP (the Zurich Atmosphere Purge) is a high precision sky subtraction tool which can be used as complete sky subtraction solution, or as an enhancement to previously sky-subtracted data.  The method uses PCA to isolate the residual sky subtraction features and remove them from the observed datacube. Though the operation of ZAP is not dependent on perfect flatfielding of the data in a MUSE exposure, better results are obtained when these corrections are made ahead of time.
+ZAP (the Zurich Atmosphere Purge) is a high precision sky subtraction tool which can be used as complete sky subtraction solution, or as an enhancement to previously sky-subtracted MUSE integral field spectroscopic data.  The method uses PCA to isolate the residual sky subtraction features and remove them from the observed datacube. Though the operation of ZAP is not dependent on perfect flatfielding of the data in a MUSE exposure, better results are obtained when these corrections are made ahead of time. Future development will include expansion to more instruments.
 
 Installation
 ============
@@ -27,8 +27,8 @@ Many linear algebra operations are performed in ZAP, so it can be beneficial to 
 Steps
 -----
 
-Once the code is downloaded, cd into the zap directory and install via::
-   python setup.py install
+ZAP can be installed using pip ::
+  pip install zap
 
 
 Examples
