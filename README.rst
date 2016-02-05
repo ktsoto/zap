@@ -16,3 +16,5 @@ or into the user path with
 pip install --user zap
 
 Documentation : `zap.readthedocs.org <http://zap.readthedocs.org/en/latest/>`_
+
+ZAP is on the astronomy source code library http://ascl.net/1602.003
