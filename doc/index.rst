@@ -3,6 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+===============================
 Welcome to ZAP's documentation!
 ===============================
 
@@ -28,7 +29,8 @@ Steps
 -----
 
 ZAP can be installed using pip ::
-  pip install zap
+
+    pip install zap
 
 
 Examples
@@ -41,7 +43,7 @@ In its most hands-off form, ZAP can take an input fits datacube, operate on it, 
 
 Care should be taken, however, since this case assumes a sparse field, and better results can be obtained by applying masks.
 
-The main function is ``zap.process``:
+The main function is ``zap.process``.
 
 There are a number of options that can be passed to the code which we describe here:
 
@@ -98,16 +100,16 @@ Aside from the main process, two functions are included that can be run outside 
 
 .. autofunction:: zap.wmedian
 
-		  
+
 Command Line Interface
 ======================
 
 ZAP can also be used from the command line::
-  
+
   python -m zap INPUT_CUBE.fits
 
 More information use of the command line interface can be found with the command ::
-  
+
   python -m zap -h
 
 
@@ -143,7 +145,7 @@ eigenspectra per region.  A workflow may go as follows:
   # plot a spectrum of the cleaned ZAP dataproduct
   plt.plot(zobj.cleancube[:,50:100,50:100].sum(axis=(1,2)), 'g')
 
-  # choose just the first 3 spectra for all segmments
+  # choose just the first 3 spectra for all segments
   zobj.reprocess(nevals=3)
 
   # plot a spectrum extracted from the original cube
@@ -178,9 +180,9 @@ eigenspectra per region.  A workflow may go as follows:
   # or merge the zap datacube into the original input datacube, replacing the data extension
   zobj.writefits(outcubefits='DATACUBE_FINAL_ZAP.fits')
 
-======
 ZCLASS
 ======
+
 .. autoclass:: zap.zclass
    :members:
 

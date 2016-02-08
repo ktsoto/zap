@@ -7,13 +7,13 @@ The method uses PCA to isolate the residual sky subtraction features and remove
 them from the observed datacube. Future developments will include modification for
 use on a variety of instruments.
 
-the lat stable release of ZAP can be installed simply with:
+The last stable release of ZAP can be installed simply with::
 
-pip install zap
+    pip install zap
 
-or into the user path with
+Or into the user path with::
 
-pip install --user zap
+    pip install --user zap
 
 Documentation : `zap.readthedocs.org <http://zap.readthedocs.org/en/latest/>`_
 
