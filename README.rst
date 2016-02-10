@@ -17,4 +17,7 @@ Or into the user path with::
 
 Documentation : `zap.readthedocs.org <http://zap.readthedocs.org/en/latest/>`_
 
+ZAP can be cited via the NASA ADS http://adsabs.harvard.edu/abs/2016ascl.soft02003S
+
 ZAP is on the astronomy source code library http://ascl.net/1602.003
+
