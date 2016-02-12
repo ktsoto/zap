@@ -21,3 +21,4 @@ ZAP can be cited via the NASA ADS http://adsabs.harvard.edu/abs/2016ascl.soft020
 
 ZAP is on the astronomy source code library http://ascl.net/1602.003
 
+For questions on the use of zap please contact Kurt soto at kurt.soto@phys.ethz.ch
