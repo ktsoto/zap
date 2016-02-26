@@ -1,6 +1,8 @@
 ZAP (the Zurich Atmosphere Purge)
 ---------------------------------
 
+Tired of sky subtraction residuals? ZAP them!
+
 ZAP is a high precision sky subtraction tool which can be used as complete sky
 subtraction solution, or as an enhancement to previously sky-subtracted MUSE data.
 The method uses PCA to isolate the residual sky subtraction features and remove
