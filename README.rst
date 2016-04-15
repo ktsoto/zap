@@ -19,8 +19,9 @@ Or into the user path with::
 
 Documentation : `zap.readthedocs.org <http://zap.readthedocs.org/en/latest/>`_
 
-Read about the method here: `arXiv <http://arxiv.org/abs/1602.08037>`_
+Please cite ZAP as:
+\bibitem[Soto et al.(2016)]{2016MNRAS.458.3210S} Soto, K.~T., Lilly, S.~J., Bacon, R., Richard, J., \& Conseil, S.\ 2016, \mnras, 458, 3210 
 
-ZAP can be cited via the NASA ADS http://adsabs.harvard.edu/abs/2016arXiv160208037S
+The paper describing the method can be found here: http://adsabs.harvard.edu/abs/2016MNRAS.458.3210S
 
 For questions on the use of zap please contact Kurt soto at kurt.soto@phys.ethz.ch
