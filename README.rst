@@ -19,7 +19,8 @@ Or into the user path with::
 
 Documentation : `zap.readthedocs.org <http://zap.readthedocs.org/en/latest/>`_
 
-Please cite ZAP as:
+Please cite ZAP as::
+
 \bibitem[Soto et al.(2016)]{2016MNRAS.458.3210S} Soto, K.~T., Lilly, S.~J., Bacon, R., Richard, J., \& Conseil, S.\ 2016, \mnras, 458, 3210 
 
 The paper describing the method can be found here: http://adsabs.harvard.edu/abs/2016MNRAS.458.3210S
