@@ -66,7 +66,7 @@ def process(musecubefits, outcubefits='DATACUBE_ZAP.fits', clean=True,
             zlevel='median', cftype='weight', cfwidthSVD=100, cfwidthSP=50,
             pevals=[], nevals=[], optimizeType='normal', extSVD=None,
             skycubefits=None, svdoutputfits='ZAP_SVD.fits', mask=None,
-            interactive=False):
+            interactive=False, ncpu=None):
     """ Performs the entire ZAP sky subtraction algorithm.
 
     Work on an input FITS file and optionally writes the product to an output
@@ -151,6 +151,10 @@ def process(musecubefits, outcubefits='DATACUBE_ZAP.fits', clean=True,
     if extSVD is None:
         check_file_exists(svdoutputfits)
 
+    if ncpu is not None:
+        global NCPU
+        NCPU = ncpu
+
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
         raise ValueError('Weighted median requires a zlevel calculation')
@@ -192,7 +196,8 @@ def process(musecubefits, outcubefits='DATACUBE_ZAP.fits', clean=True,
 
 
 def SVDoutput(musecubefits, svdoutputfits='ZAP_SVD.fits', clean=True,
-              zlevel='median', cftype='weight', cfwidth=100, mask=None):
+              zlevel='median', cftype='weight', cfwidth=100, mask=None,
+              ncpu=None):
     """ Performs the SVD decomposition of a datacube.
 
     This allows to use the SVD for a different datacube.
@@ -223,6 +228,10 @@ def SVDoutput(musecubefits, svdoutputfits='ZAP_SVD.fits', clean=True,
     logger.info('Running ZAP %s !', __version__)
     logger.info('Processing %s to compute the SVD', musecubefits)
     check_file_exists(svdoutputfits)
+
+    if ncpu is not None:
+        global NCPU
+        NCPU = ncpu
 
     # Check for consistency between weighted median and zlevel keywords
     if cftype == 'weight' and zlevel == 'none':
@@ -1004,6 +1013,8 @@ def worker(f, i, chunk, out_q, err_q, kwargs):
 
 
 def parallel_map(func, arr, indices, **kwargs):
+    logger.debug('Running function %s with indices: %s',
+                 func.__name__, indices)
     manager = Manager()
     out_q = manager.Queue()
     err_q = manager.Queue()
