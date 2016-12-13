@@ -616,7 +616,7 @@ class zclass(object):
 
         """
         logger.info('Applying Continuum Filter, cfwidth=%d', cfwidth)
-        if cftype not in ('weight', 'median'):
+        if cftype not in ('weight', 'median', 'none'):
             raise ValueError("cftype must be 'weight' or 'median', got {}"
                              .format(cftype))
         self._cftype = cftype
@@ -628,9 +628,13 @@ class zclass(object):
             weight = np.abs(self.zlsky - (np.max(self.zlsky) + 1))
 
         # remove continuum features
-        self.contarray = _continuumfilter(self.stack, cftype, weight=weight,
-                                          cfwidth=cfwidth)
-        self.normstack = self.stack - self.contarray
+        if cftype == 'none':
+            self.contarray = np.zeros_like(self.stack)
+            self.normstack = self.stack.copy()
+        else:
+            self.contarray = _continuumfilter(self.stack, cftype,
+                                              weight=weight, cfwidth=cfwidth)
+            self.normstack = self.stack - self.contarray
 
     @timeit
     def _msvd(self):
